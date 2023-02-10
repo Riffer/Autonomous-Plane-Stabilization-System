@@ -1,14 +1,11 @@
 //========================================================Author:SLOMOGANGSTA(VSYK)===========================================================
 //========================================================Date: 27th January 2019=============================================================
 #include "main.h"
+#include "mpu6050.h"
 
 gyroStruct gyroVal;
 gyroStruct gyroCal;
 gyroStruct gyroAcc;
-
-channelValStruct inputVals;
-channelValStruct servoVals;
-timerISRStruct lastVals;
 
 pidgainStruct gainroll;
 pidgainStruct gainpitch;
@@ -16,128 +13,42 @@ pidgainStruct gainyaw;
 
 angleValStruct angleVals;
 
-boolean set_gyro_angles;
-
-struct RollPitchYawStruct
-{
-  float roll = 0;
-  float pitch = 0;
-  float yaw = 0;
-};
-
-struct PIDStruct
-{
-  RollPitchYawStruct i_mem;
-  RollPitchYawStruct input;
-  RollPitchYawStruct output;
-  RollPitchYawStruct setpoint;
-  RollPitchYawStruct d_error;
-};
+channelValStruct inputVals;
+channelValStruct servoVals;
 
 PIDStruct pid;
 
+volatile timerISRStruct lastVals;
 
-//float pid_i_mem_roll = 0, pid_roll_setpoint = 0, gyro_roll_input = 0, pid_output_roll = 0, pid_last_roll_d_error = 0;
-//float pid_i_mem_pitch = 0, pid_pitch_setpoint = 0, gyro_pitch_input = 0, pid_output_pitch = 0, pid_last_pitch_d_error = 0;
-//float pid_i_mem_yaw = 0, pid_yaw_setpoint = 0, gyro_yaw_input = 0, pid_output_yaw = 0, pid_last_yaw_d_error = 0;
-
-bool clockspeed_ok = false;
-int temperature = 0;
-int loopCounter = 0;
-unsigned long loop_start_time = 0;
-float pinten = 0;
-
-
-// forward declaration
-void setup_mpu_6050_registers();
-void read_mpu_6050_data();
 double mapf(double val, double in_min, double in_max, double out_min, double out_max);
+
 void calculate_pid();
-void PWM();
+void setup_MPU();
+void setup_PWM();
+void setup_SERVO();
 
 void setup()
 {
-  Serial.begin(57600);
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  Serial.begin(115200);
   Wire.begin();
 
-  // setup PWM interrupts
-  pinMode(0, INPUT);
-  attachInterrupt(digitalPinToInterrupt(0), PWM, CHANGE);
-
-  pinMode(1, INPUT);
-  attachInterrupt(digitalPinToInterrupt(1), PWM, CHANGE);
-
-  pinMode(2, INPUT);
-  attachInterrupt(digitalPinToInterrupt(2), PWM, CHANGE);
-
-  pinMode(3, INPUT);
-  attachInterrupt(digitalPinToInterrupt(3), PWM, CHANGE);
-
-  Serial.println("Interrupts Enabled Successfully");
-  delay(100);
-
-  Serial.println(F("Checking I2C clock speed."));
-  delay(100);
-
-  Wire.setClock(400UL * 1000UL);
-
-#if F_CPU == 16000000L
-  clockspeed_ok = true;
-  Serial.println(F("CPU clockspeed ok"));
-#endif
-
-  /**
-   * TODO: change method with different plaform
-  */
-  if (TWBR == 12 && clockspeed_ok)
-  {
-    Serial.println(F("I2C clock speed is correctly set to 400kHz."));
-  }
-  else
-  {
-    Serial.println(F("I2C clock speed is not set to 400kHz. (ERROR 8)"));
-    exit(0);
-  }
-
-  Serial.println("Setting DIGITAL PIN 4 , 5 , 6 ,7 as OUTPUTS");
-
-  pinMode(4, OUTPUT);
-  pinMode(5, OUTPUT);
-  pinMode(6, OUTPUT);
-  pinMode(7, OUTPUT);
-
-  Serial.println("Setting up registers of MPU6050");
-  setup_mpu_6050_registers();
-
-  Serial.println("Calculating Offset ");
-  for (int cal_int = 0; cal_int < 2000; cal_int++)
-  {
-    if (cal_int % 125 == 0)
-      Serial.print(".");
-    read_mpu_6050_data();
-    gyroCal.x += gyroVal.x;
-    gyroCal.y += gyroVal.y;
-    gyroCal.z += gyroVal.z;
-    delay(3);
-  }
-  gyroCal.x /= 2000;
-  gyroCal.y /= 2000;
-  gyroCal.z /= 2000;
-
-  Serial.println("Calculated Offsets are");
-  Serial.print("Pitch offset: ");
-  Serial.println(gyroCal.x);
-  Serial.print("Roll offset: ");
-  Serial.println(gyroCal.y);
-  Serial.print("Yaw offset: ");
-  Serial.println(gyroCal.z);
+  setup_MPU();
+  setup_PWM();
+  setup_SERVO();
 }
+ 
 
 void loop()
 {
-  // Serial.print("Receiver Input 3: ");
-  // Serial.println(inputVals.channel3);
-  if (inputVals.channel4 < 1000)
+  static bool set_gyro_angles = false;
+  static int loopCounter = 0;
+  static unsigned long loop_start_time = 0;
+  static float pinten = 0;
+
+  // channel input 4 intensivity to zero if below PWM_MIN
+  if (inputVals.ch4 <= PWM_MIN)
   {
     gainroll.d = 0;
     gainroll.p = 0;
@@ -145,23 +56,24 @@ void loop()
     gainpitch.p = 0;
     gainyaw.p = 0;
     gainyaw.d = 0;
-    // Serial.println("INTENSITY : 0");
   }
-
   else
   {
-    pinten = mapf(inputVals.channel4, 1000, 2050, 0.07, 0.17);
+    // channel input 4 intensivity mapped to value between 0.07 and 0.17
+    pinten = mapf(inputVals.ch4, PWM_MIN, (PWM_MAX + 50), 0.07, 0.17);
     gainroll.d = pinten;
     gainroll.p = pinten;
     gainpitch.d = pinten;
     gainpitch.p = pinten;
     gainyaw.p = pinten;
     gainyaw.d = pinten;
-    // Serial.print("INTENSITY: ");
-    // Serial.println(pinten);
   }
 
-  read_mpu_6050_data();
+  if (!mpu_6050_read_data(&gyroAcc, &gyroVal))
+  {
+    delay(1000);
+    return;
+  }
 
   gyroVal.x -= gyroCal.x;
   gyroVal.y -= gyroCal.y;
@@ -173,84 +85,84 @@ void loop()
   angleVals.pitch += angleVals.roll * sin(gyroVal.z * 0.000001066);
   angleVals.roll -= angleVals.pitch * sin(gyroVal.z * 0.000001066);
 
-  gyroAcc.totalvector = sqrt((gyroAcc.x * gyroAcc.x) + (gyroAcc.y * gyroAcc.y) + (gyroAcc.z * gyroAcc.z));
-  angleVals.pitch_acc = asin((float)gyroAcc.y / gyroAcc.totalvector) * 57.296;
-  angleVals.roll_acc = asin((float)gyroAcc.x / gyroAcc.totalvector) * -57.296;
+  gyroAcc.totalVector = sqrt((gyroAcc.x * gyroAcc.x) + (gyroAcc.y * gyroAcc.y) + (gyroAcc.z * gyroAcc.z));
+  angleVals.pitchAcc = asin((float)gyroAcc.y / gyroAcc.totalVector) * 57.296;
+  angleVals.rollAcc = asin((float)gyroAcc.x / gyroAcc.totalVector) * -57.296;
 
-  angleVals.pitch_acc -= 0.0;
-  angleVals.roll_acc -= 0.0;
+  angleVals.pitchAcc -= 0.0;
+  angleVals.rollAcc -= 0.0;
 
   if (set_gyro_angles)
   {
-    angleVals.pitch = angleVals.pitch * 0.9996 + angleVals.pitch_acc * 0.0004;
-    angleVals.roll = angleVals.roll * 0.9996 + angleVals.roll_acc * 0.0004;
+    angleVals.pitch = angleVals.pitch * 0.9996 + angleVals.pitchAcc * 0.0004;
+    angleVals.roll = angleVals.roll * 0.9996 + angleVals.rollAcc * 0.0004;
   }
   else
   {
-    angleVals.pitch = angleVals.pitch_acc;
-    angleVals.roll = angleVals.roll_acc;
+    angleVals.pitch = angleVals.pitchAcc;
+    angleVals.roll = angleVals.rollAcc;
     set_gyro_angles = true;
   }
 
-  angleVals.pitch_out = angleVals.pitch_out * 0.9 + angleVals.pitch * 0.1;
-  angleVals.roll_out = angleVals.roll_out * 0.9 + angleVals.roll * 0.1;
+  angleVals.pitchOut = angleVals.pitchOut * 0.9 + angleVals.pitch * 0.1;
+  angleVals.rollOut = angleVals.rollOut * 0.9 + angleVals.roll * 0.1;
 
-  angleVals.pitch_adjust = angleVals.pitch_out * 15;
-  angleVals.roll_adjust = angleVals.roll_out * 15;
+  angleVals.pitchAdjust = angleVals.pitchOut * 15;
+  angleVals.rollAdjust = angleVals.rollOut * 15;
 
   float uptake = 0.2;
   float oneMinusUptake = 1 - uptake;
 
-  gyro_pitch_input = (gyro_pitch_input * oneMinusUptake) + (gyroVal.x * uptake);
-  gyro_roll_input = (gyro_roll_input * oneMinusUptake) + (gyroVal.y * uptake);
-  gyro_yaw_input = (gyro_yaw_input * oneMinusUptake) + (gyroVal.z * uptake);
+  pid.input.pitch = (pid.input.pitch * oneMinusUptake) + (gyroVal.x * uptake);
+  pid.gyro.roll = (pid.gyro.roll * oneMinusUptake) + (gyroVal.y * uptake);
+  pid.input.yaw = (pid.input.yaw * oneMinusUptake) + (gyroVal.z * uptake);
 
-  pid_roll_setpoint = 0;
-  if (inputVals.channel1 > 1508)
-    pid_roll_setpoint = inputVals.channel1 - 1508;
-  else if (inputVals.channel1 < 1492)
-    pid_roll_setpoint = inputVals.channel1 - 1492;
-  pid_roll_setpoint -= angleVals.roll_adjust;
-  pid_roll_setpoint /= 3.0;
+  pid.setpoint.roll = 0;
+  if (inputVals.ch1 > (PWM_MID + 8))
+    pid.setpoint.roll = inputVals.ch1 - (PWM_MID + 8);
+  else if (inputVals.ch1 < (PWM_MID - 8))
+    pid.setpoint.roll = inputVals.ch1 - (PWM_MID - 8);
+  pid.setpoint.roll -= angleVals.rollAdjust;
+  pid.setpoint.roll /= 3.0;
 
-  pid_pitch_setpoint = 0;
-  if (inputVals.channel2 > 1508)
-    pid_pitch_setpoint = inputVals.channel2 - 1508;
-  else if (inputVals.channel2 < 1492)
-    pid_pitch_setpoint = inputVals.channel2 - 1492;
-  pid_pitch_setpoint -= angleVals.pitch_adjust;
-  pid_pitch_setpoint /= 3.0;
+  pid.setpoint.pitch = 0;
+  if (inputVals.ch2 > (PWM_MID + 8))
+    pid.setpoint.pitch = inputVals.ch2 - (PWM_MID + 8);
+  else if (inputVals.ch2 < (PWM_MID - 8))
+    pid.setpoint.pitch = inputVals.ch2 - (PWM_MID - 8);
+  pid.setpoint.pitch -= angleVals.pitchAdjust;
+  pid.setpoint.pitch /= 3.0;
 
-  pid_yaw_setpoint = 0;
-  if (inputVals.channel3 > 1508)
-    pid_yaw_setpoint = inputVals.channel3 - 1508;
-  else if (inputVals.channel3 < 1492)
-    pid_yaw_setpoint = inputVals.channel3 - 1492;
-  pid_pitch_setpoint /= 3.0;
+  pid.setpoint.yaw = 0;
+  if (inputVals.ch3 > (PWM_MID + 8))
+    pid.setpoint.yaw = inputVals.ch3 - (PWM_MID + 8);
+  else if (inputVals.ch3 < (PWM_MID - 8))
+    pid.setpoint.yaw = inputVals.ch3 - (PWM_MID - 8);
+  pid.setpoint.pitch /= 3.0;
 
   calculate_pid();
 
-  Serial.print("Receiver Roll: ");
-  Serial.println(inputVals.channel1);
-  Serial.print("Receiver Pitch: ");
-  Serial.println(inputVals.channel2);
-  Serial.print("Receiver Yaw: ");
-  Serial.println(inputVals.channel3);
-  Serial.print("Intensity Knob: ");
-  Serial.println(inputVals.channel4);
+  serial_printF("Receiver Roll: ");
+  serial_println(inputVals.ch1);
+  serial_printF("Receiver Pitch: ");
+  serial_println(inputVals.ch2);
+  serial_printF("Receiver Yaw: ");
+  serial_println(inputVals.ch3);
+  serial_printF("Intensity Knob: ");
+  serial_println(inputVals.ch4);
 
-  servoVals.channel1 = inputVals.channel1 + pid_output_roll;
-  servoVals.channel2 = inputVals.channel2 + pid_output_pitch;
-  servoVals.channel3 = servoVals.channel1;
-  servoVals.channel3 = (1500 - servoVals.channel1) + 1500;
-  servoVals.channel4 = inputVals.channel3 + pid_output_yaw;
+  // a bit mixing
+  servoVals.ch1 = inputVals.ch1 + pid.output.roll;     // ROLL
+  servoVals.ch2 = inputVals.ch2 + pid.output.pitch;    // PITCH
+  servoVals.ch3 = (PWM_MID - servoVals.ch1) + PWM_MID; // INVERTED ROLL
+  servoVals.ch4 = inputVals.ch3 + pid.output.yaw;      // PITCH + YAW?
 
-  Serial.print("Calculated roll input : ");
-  Serial.println(servoVals.channel1);
-  Serial.print("Calculated pitch input : ");
-  Serial.println(servoVals.channel2);
-  Serial.print("Calculated Yaw input : ");
-  Serial.println(servoVals.channel4);
+  serial_printF("Calculated roll input : ");
+  serial_println(servoVals.ch1);
+  serial_printF("Calculated pitch input : ");
+  serial_println(servoVals.ch2);
+  serial_printF("Calculated Yaw input : ");
+  serial_println(servoVals.ch4);
 
   while (micros() - loop_start_time < 4000)
     ;
@@ -264,10 +176,10 @@ void loop()
     loopCounter = 0;
 
     PORTD |= B11110000;
-    unsigned long timer_channel_1 = servoVals.channel1 + loop_start_time;
-    unsigned long timer_channel_2 = servoVals.channel2 + loop_start_time;
-    unsigned long timer_channel_3 = servoVals.channel3 + loop_start_time;
-    unsigned long timer_channel_4 = servoVals.channel4 + loop_start_time;
+    unsigned long timer_channel_1 = servoVals.ch1 + loop_start_time;
+    unsigned long timer_channel_2 = servoVals.ch2 + loop_start_time;
+    unsigned long timer_channel_3 = servoVals.ch3 + loop_start_time;
+    unsigned long timer_channel_4 = servoVals.ch4 + loop_start_time;
 
     byte cnt = 0;
     while (cnt < 4)
@@ -303,122 +215,173 @@ double mapf(double val, double in_min, double in_max, double out_min, double out
   return (val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-void setup_mpu_6050_registers()
-{
-  Wire.beginTransmission(0x68);
-  Wire.write(0x6B);
-  Wire.write(0x00);
-  Wire.endTransmission();
-  delay(1000);
-  // Configure the accelerometer (+/-8g)
-  Wire.beginTransmission(0x68);
-  Wire.write(0x1C);
-  Wire.write(0x10);
-  Wire.endTransmission();
-  delay(1000);
-  // Configure the gyro (500dps full scale)
-  Wire.beginTransmission(0x68);
-  Wire.write(0x1B);
-  Wire.write(0x08);
-  Wire.endTransmission();
-  delay(1000);
-}
-
-void read_mpu_6050_data()
-{
-  Wire.beginTransmission(0x68);
-  Wire.write(0x3B);
-  Wire.endTransmission();
-  Wire.requestFrom(0x68, 14);
-  while (Wire.available() < 14)
-    ;
-  gyroAcc.x = Wire.read() << 8 | Wire.read();
-  gyroAcc.y = Wire.read() << 8 | Wire.read();
-  gyroAcc.z = Wire.read() << 8 | Wire.read();
-  temperature = Wire.read() << 8 | Wire.read();
-  gyroVal.x = Wire.read() << 8 | Wire.read();
-  gyroVal.y = Wire.read() << 8 | Wire.read();
-  gyroVal.z = Wire.read() << 8 | Wire.read();
-  gyroAcc.x *= -1;
-  gyroVal.y *= -1;
-}
+/**
+ * TODO: understand :-)
+ */
 
 void calculate_pid()
 {
   float pid_error_temp;
-  pid_error_temp = gyro_pitch_input - pid_pitch_setpoint;
-  pid_i_mem_pitch += gainpitch.i * pid_error_temp;
-  pid_i_mem_pitch = constrain(pid_i_mem_pitch, -gainpitch.max, gainpitch.max);
 
-  pid_output_pitch = gainpitch.p * pid_error_temp + pid_i_mem_pitch + gainpitch.d * (pid_error_temp - pid_last_pitch_d_error);
-  pid_output_pitch = constrain(pid_output_pitch, -gainpitch.max, gainpitch.max);
+  pid_error_temp = pid.input.pitch - pid.setpoint.pitch;
+  pid.i_mem.pitch += gainpitch.i * pid_error_temp;
+  pid.i_mem.pitch = constrain(pid.i_mem.pitch, -gainpitch.max, gainpitch.max);
 
-  pid_last_pitch_d_error = pid_error_temp;
+  pid.output.pitch = gainpitch.p * pid_error_temp + pid.i_mem.pitch + gainpitch.d * (pid_error_temp - pid.d_error.pitch);
+  pid.output.pitch = constrain(pid.output.pitch, -gainpitch.max, gainpitch.max);
 
-  pid_error_temp = gyro_roll_input - pid_roll_setpoint;
-  pid_i_mem_roll += gainroll.i * pid_error_temp;
-  pid_i_mem_roll = constrain(pid_i_mem_roll, -gainroll.max, gainroll.max);
+  pid.d_error.pitch = pid_error_temp;
 
-  pid_output_roll = gainroll.p * pid_error_temp + pid_i_mem_roll + gainroll.d * (pid_error_temp - pid_last_roll_d_error);
-  pid_output_roll = constrain(pid_output_roll, -gainroll.max, gainroll.max);
+  pid_error_temp = pid.gyro.roll - pid.setpoint.roll;
+  pid.i_mem.roll += gainroll.i * pid_error_temp;
+  pid.i_mem.roll = constrain(pid.i_mem.roll, -gainroll.max, gainroll.max);
 
-  pid_last_roll_d_error = pid_error_temp;
+  pid.output.roll = gainroll.p * pid_error_temp + pid.i_mem.roll + gainroll.d * (pid_error_temp - pid.d_error.roll);
+  pid.output.roll = constrain(pid.output.roll, -gainroll.max, gainroll.max);
 
-  pid_error_temp = gyro_yaw_input - pid_yaw_setpoint;
-  pid_i_mem_yaw += gainyaw.i * pid_error_temp;
-  pid_i_mem_yaw = constrain(pid_i_mem_yaw, -gainyaw.max_i, gainyaw.max_i);
+  pid.d_error.roll = pid_error_temp;
 
-  pid_output_yaw = gainyaw.p * pid_error_temp + pid_i_mem_yaw + gainyaw.d * (pid_error_temp - pid_last_yaw_d_error);
-  pid_output_yaw = constrain(pid_output_yaw, -gainyaw.max, gainyaw.max);
+  pid_error_temp = pid.input.yaw - pid.setpoint.yaw;
+  pid.i_mem.yaw += gainyaw.i * pid_error_temp;
+  pid.i_mem.yaw = constrain(pid.i_mem.yaw, -gainyaw.max_i, gainyaw.max_i);
 
-  pid_last_yaw_d_error = pid_error_temp;
+  pid.output.yaw = gainyaw.p * pid_error_temp + pid.i_mem.yaw + gainyaw.d * (pid_error_temp - pid.d_error.yaw);
+  pid.output.yaw = constrain(pid.output.yaw, -gainyaw.max, gainyaw.max);
+
+  pid.d_error.yaw = pid_error_temp;
 }
 
+void setup_MPU()
+{
+   if (!mpu_6050_setup() || !mpu_6050_calibrate(&gyroAcc, &gyroVal, &gyroCal))
+  {
+    while (1)
+    {
+      serial_printlnF("no gyro - startup failed!");
+      while (1)
+      {
+        delay(250);
+        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+      }
+    }
+  }
+
+  serial_printlnF("calculated Offsets are");
+  serial_printF("pitch offset: ");
+  serial_println(gyroCal.x);
+  serial_printF("roll offset: ");
+  serial_println(gyroCal.y);
+  serial_printF("yaw offset: ");
+  serial_println(gyroCal.z);
+}
+
+
 // ISR for PWM values
-void PWM()
+void PWM_ISR()
 {
 
-  if (lastVals.channel1 == 0 && PINB & B00000001)
+  if (lastVals.ch1 == 0 && PINB & B00000001)
   {
-    lastVals.channel1 = 1;
+    lastVals.ch1 = 1;
     lastVals.timer1 = micros();
   }
-  else if (lastVals.channel1 == 1 && !(PINB & B00000001))
+  else if (lastVals.ch1 == 1 && !(PINB & B00000001))
   {
-    lastVals.channel1 = 0;
-    inputVals.channel1 = micros() - lastVals.timer1;
+    lastVals.ch1 = 0;
+    inputVals.ch1 = micros() - lastVals.timer1;
   }
 
-  if (lastVals.channel2 == 0 && PINB & B00000010)
+  if (lastVals.ch2 == 0 && PINB & B00000010)
   {
-    lastVals.channel2 = 1;
+    lastVals.ch2 = 1;
     lastVals.timer2 = micros();
   }
-  else if (lastVals.channel2 == 1 && !(PINB & B00000010))
+  else if (lastVals.ch2 == 1 && !(PINB & B00000010))
   {
-    lastVals.channel2 = 0;
-    inputVals.channel2 = micros() - lastVals.timer2;
+    lastVals.ch2 = 0;
+    inputVals.ch2 = micros() - lastVals.timer2;
   }
 
-  if (lastVals.channel3 == 0 && PINB & B00000100)
+  if (lastVals.ch3 == 0 && PINB & B00000100)
   {
-    lastVals.channel3 = 1;
+    lastVals.ch3 = 1;
     lastVals.timer3 = micros();
   }
-  else if (lastVals.channel3 == 1 && !(PINB & B00000100))
+  else if (lastVals.ch3 == 1 && !(PINB & B00000100))
   {
-    lastVals.channel3 = 0;
-    inputVals.channel3 = micros() - lastVals.timer3;
+    lastVals.ch3 = 0;
+    inputVals.ch3 = micros() - lastVals.timer3;
   }
 
-  if (lastVals.channel4 == 0 && PINB & B00001000)
+  if (lastVals.ch4 == 0 && PINB & B00001000)
   {
-    lastVals.channel4 = 1;
+    lastVals.ch4 = 1;
     lastVals.timer4 = micros();
   }
-  else if (lastVals.channel4 == 1 && !(PINB & B00001000))
+  else if (lastVals.ch4 == 1 && !(PINB & B00001000))
   {
-    lastVals.channel4 = 0;
-    inputVals.channel4 = micros() - lastVals.timer4;
+    lastVals.ch4 = 0;
+    inputVals.ch4 = micros() - lastVals.timer4;
   }
+}
+
+void setup_PWM()
+{
+  serial_printlnF("setting up 0, 1, 2, 3 as roll, pitch, yaw and intensivity know");
+
+  pinMode(0, INPUT); // roll
+  attachInterrupt(digitalPinToInterrupt(0), PWM_ISR, CHANGE);
+
+  pinMode(1, INPUT); // pitch
+  attachInterrupt(digitalPinToInterrupt(1), PWM_ISR, CHANGE);
+
+  pinMode(2, INPUT); // yaw
+  attachInterrupt(digitalPinToInterrupt(2), PWM_ISR, CHANGE);
+
+  pinMode(3, INPUT); // intensivity
+  attachInterrupt(digitalPinToInterrupt(3), PWM_ISR, CHANGE);
+
+  // serial_printlnF("interrupts enabled successfully");
+}
+
+void setup_Wire()
+{
+  serial_printlnF("setup wire");
+  Wire.begin();
+  Wire.setClock(400UL * 1000UL); // 400 kHz
+
+  /**
+   * TODO: change method with different plaform
+   */
+#if F_CPU == 16000000L
+  const bool clockspeed_ok = true;
+#else
+  const bool clockspeed_ok = false;
+#endif
+
+  if (TWBR == 12 && clockspeed_ok)
+  {
+    serial_printlnF("clock speeds correctly set");
+  }
+  else
+  {
+    serial_printlnF("I2C clock speed is not set to 400kHz. (ERROR 8)");
+    while (1)
+    {
+      delay(100);
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    }
+  }
+
+}
+
+void setup_SERVO()
+{
+  serial_printlnF("setting DIGITAL PIN 4, 5, 6, 7 as OUTPUTS");
+
+  pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
+
 }
