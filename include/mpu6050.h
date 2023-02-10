@@ -2,7 +2,7 @@
 #define MPU_6050
 
 #include <Wire.h>
-#include "main.h"
+
 
 #define I2C_ERROR_MSG "I2C error"
 

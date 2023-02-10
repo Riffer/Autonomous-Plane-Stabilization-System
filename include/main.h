@@ -81,37 +81,6 @@ struct PIDStruct
 
 #define DEBUG 1 //0 for turn off, 1 for turn on - this works function wise and the compiler optimizes if(0){} out
 
-#ifdef undefined
-//for debugging output
-#define serial_printF(x, ...)                     \
-    do                                           \
-    {                                            \
-        if (DEBUG && Serial.availableForWrite()) \
-            Serial.print(F(x), ##__VA_ARGS__);      \
-    } while (0)
-
-#define serial_print(x, ...)                     \
-    do                                           \
-    {                                            \
-        if (DEBUG && Serial.availableForWrite()) \
-            Serial.print(x, ##__VA_ARGS__);      \
-    } while (0)
-
-#define serial_printlnF(x, ...)                   \
-    do                                           \
-    {                                            \
-        if (DEBUG && Serial.availableForWrite()) \
-            Serial.println(F(x), ##__VA_ARGS__);    \
-    } while (0)
-
-#define serial_println(x, ...)                   \
-    do                                           \
-    {                                            \
-        if (DEBUG && Serial.availableForWrite()) \
-            Serial.println(x, ##__VA_ARGS__);    \
-    } while (0)
-#endif
-
 
 //for debugging output
 #define serial_printF(x, ...)                     \
@@ -141,6 +110,7 @@ struct PIDStruct
         if (DEBUG) \
             Serial.println(x, ##__VA_ARGS__);    \
     } while (0)
+
 
 
 #endif // MAIN_H
