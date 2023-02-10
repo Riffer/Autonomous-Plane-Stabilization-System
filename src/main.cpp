@@ -142,13 +142,13 @@ void loop()
 
   calculate_pid();
 
-  serial_printF("Receiver Roll: ");
+  serial_printF("receiver roll: ");
   serial_println(inputVals.ch1);
-  serial_printF("Receiver Pitch: ");
+  serial_printF("receiver pitch: ");
   serial_println(inputVals.ch2);
-  serial_printF("Receiver Yaw: ");
+  serial_printF("receiver yaw: ");
   serial_println(inputVals.ch3);
-  serial_printF("Intensity Knob: ");
+  serial_printF("intensity knob: ");
   serial_println(inputVals.ch4);
 
   // a bit mixing
@@ -157,19 +157,18 @@ void loop()
   servoVals.ch3 = (PWM_MID - servoVals.ch1) + PWM_MID; // INVERTED ROLL
   servoVals.ch4 = inputVals.ch3 + pid.output.yaw;      // PITCH + YAW?
 
-  serial_printF("Calculated roll input : ");
+  serial_printF("calculated roll input : ");
   serial_println(servoVals.ch1);
-  serial_printF("Calculated pitch input : ");
+  serial_printF("calculated pitch input : ");
   serial_println(servoVals.ch2);
-  serial_printF("Calculated Yaw input : ");
+  serial_printF("calculated yaw input : ");
   serial_println(servoVals.ch4);
 
-  while (micros() - loop_start_time < 4000)
-    ;
+  // wait until 0,4 miliseconds gone by (1000 micros are 1 milis, 1 second has 1.000.000 micros!)
+  while (micros() - loop_start_time < 4000); 
   loop_start_time = micros();
 
   loopCounter++;
-
   if (loopCounter >= 0)
   {
 
@@ -181,6 +180,7 @@ void loop()
     unsigned long timer_channel_3 = servoVals.ch3 + loop_start_time;
     unsigned long timer_channel_4 = servoVals.ch4 + loop_start_time;
 
+    // PWM out in a loop - initally set high for all 4 channels and look until all 4 channels gone by
     byte cnt = 0;
     while (cnt < 4)
     {
@@ -229,7 +229,6 @@ void calculate_pid()
 
   pid.output.pitch = gainpitch.p * pid_error_temp + pid.i_mem.pitch + gainpitch.d * (pid_error_temp - pid.d_error.pitch);
   pid.output.pitch = constrain(pid.output.pitch, -gainpitch.max, gainpitch.max);
-
   pid.d_error.pitch = pid_error_temp;
 
   pid_error_temp = pid.gyro.roll - pid.setpoint.roll;
@@ -238,7 +237,6 @@ void calculate_pid()
 
   pid.output.roll = gainroll.p * pid_error_temp + pid.i_mem.roll + gainroll.d * (pid_error_temp - pid.d_error.roll);
   pid.output.roll = constrain(pid.output.roll, -gainroll.max, gainroll.max);
-
   pid.d_error.roll = pid_error_temp;
 
   pid_error_temp = pid.input.yaw - pid.setpoint.yaw;
