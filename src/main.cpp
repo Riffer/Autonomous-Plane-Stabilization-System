@@ -1,7 +1,8 @@
 //========================================================Author:SLOMOGANGSTA(VSYK)===========================================================
 //========================================================Date: 27th January 2019=============================================================
 #include "main.h"
-#include "mpu6050.h"
+#include "mpu6050.hpp"
+
 
 gyroStruct gyroVal;
 gyroStruct gyroCal;
@@ -271,6 +272,8 @@ void setup_MPU()
   serial_println(gyroCal.y);
   serial_printF("yaw offset: ");
   serial_println(gyroCal.z);
+
+  for (;;){delay(300);}
 }
 
 
