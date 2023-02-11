@@ -1,10 +1,10 @@
 //========================================================Author:SLOMOGANGSTA(VSYK)===========================================================
 //========================================================Date: 27th January 2019=============================================================
 #include "main.h"
-#include "mpu6050.h"
+#include "mpu.h"
 
 gyroStruct gyroVal;
-gyroStruct gyroCal;
+//gyroStruct gyroCal;
 gyroStruct gyroAcc;
 
 pidgainStruct gainroll;
@@ -72,15 +72,11 @@ void loop()
     gainyaw.d = pinten;
   }
 
-  if (!mpu_6050_read_data(&gyroAcc, &gyroVal))
+  if (!motion::mpu_6050_read_data(&gyroAcc, &gyroVal))
   {
     delay(1000);
     return;
   }
-
-  gyroVal.x -= gyroCal.x;
-  gyroVal.y -= gyroCal.y;
-  gyroVal.z -= gyroCal.z;
 
   angleVals.pitch += gyroVal.x * 0.0000611;
   angleVals.roll += gyroVal.y * 0.0000611;
@@ -145,27 +141,31 @@ void loop()
 
   calculate_pid();
 
-  serial_printF("receiver roll: ");
-  serial_println(inputVals.ch1);
-  serial_printF("receiver pitch: ");
-  serial_println(inputVals.ch2);
-  serial_printF("receiver yaw: ");
-  serial_println(inputVals.ch3);
-  serial_printF("intensity knob: ");
-  serial_println(inputVals.ch4);
-
+  /*
+    serial_printF("receiver roll: ");
+    serial_println(inputVals.ch1);
+    serial_printF("receiver pitch: ");
+    serial_println(inputVals.ch2);
+    serial_printF("receiver yaw: ");
+    serial_println(inputVals.ch3);
+    serial_printF("intensity knob: ");
+    serial_println(inputVals.ch4);
+  */
+ 
   // a bit mixing
   servoVals.ch1 = inputVals.ch1 + pid.output.roll;     // ROLL
   servoVals.ch2 = inputVals.ch2 + pid.output.pitch;    // PITCH
   servoVals.ch3 = (PWM_MID - servoVals.ch1) + PWM_MID; // INVERTED ROLL
   servoVals.ch4 = inputVals.ch3 + pid.output.yaw;      // PITCH + YAW?
 
-  serial_printF("calculated roll input : ");
-  serial_println(servoVals.ch1);
-  serial_printF("calculated pitch input : ");
-  serial_println(servoVals.ch2);
-  serial_printF("calculated yaw input : ");
-  serial_println(servoVals.ch4);
+  /*
+    serial_printF("calculated roll input : ");
+    serial_println(servoVals.ch1);
+    serial_printF("calculated pitch input : ");
+    serial_println(servoVals.ch2);
+    serial_printF("calculated yaw input : ");
+    serial_println(servoVals.ch4);
+  */
 
   // wait until 0,4 miliseconds gone by (1000 micros are 1 milis, 1 second has 1.000.000 micros!)
   while (micros() - loop_start_time < 4000); 
@@ -254,7 +254,7 @@ void calculate_pid()
 
 void setup_MPU()
 {
-   if (!mpu_6050_setup() || !mpu_6050_calibrate(&gyroAcc, &gyroVal, &gyroCal))
+  if(!motion::mpu_6050_setup())
   {
     while (1)
     {
@@ -266,14 +266,6 @@ void setup_MPU()
       }
     }
   }
-
-  serial_printlnF("calculated Offsets are");
-  serial_printF("pitch offset: ");
-  serial_println(gyroCal.x);
-  serial_printF("roll offset: ");
-  serial_println(gyroCal.y);
-  serial_printF("yaw offset: ");
-  serial_println(gyroCal.z);
 }
 
 
@@ -384,5 +376,4 @@ void setup_SERVO()
   pinMode(5, OUTPUT);
   pinMode(6, OUTPUT);
   pinMode(7, OUTPUT);
-
 }
