@@ -6,7 +6,7 @@
 
 #define I2C_ERROR_MSG "I2C error"
 
-uint8_t mpu_6050_write_pair(int a, int b, bool waitAfterWriteMs=300)
+uint8_t mpu_6050_write_pair(int a, int b, bool waitAfterWriteMs=1000)
 {
     Wire.beginTransmission(MPU_ADDRESS);
     Wire.write(a);

@@ -35,6 +35,9 @@ void setup()
   Wire.begin();
 
   setup_MPU();
+
+  delay(5000);
+
   setup_PWM();
   setup_SERVO();
 }
