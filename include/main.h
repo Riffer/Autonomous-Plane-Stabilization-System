@@ -20,8 +20,8 @@ struct pidgainStruct
   const int max_i = 100;
 };
 
-struct channelValStruct
-{
+struct channelValStruct 
+{              // INPUT: 
   int ch1 = 0; // Receiver Roll
   int ch2 = 0; // Receiver Pitch
   int ch3 = 0; // Receiver Yaw

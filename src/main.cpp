@@ -1,10 +1,10 @@
 //========================================================Author:SLOMOGANGSTA(VSYK)===========================================================
 //========================================================Date: 27th January 2019=============================================================
 #include "main.h"
-#include "mpu.h"
+#include "mpu6050.hpp"
 
 gyroStruct gyroVal;
-//gyroStruct gyroCal;
+gyroStruct gyroCal;
 gyroStruct gyroAcc;
 
 pidgainStruct gainroll;
@@ -72,7 +72,7 @@ void loop()
     gainyaw.d = pinten;
   }
 
-  if (!motion::mpu_6050_read_data(&gyroAcc, &gyroVal))
+  if (!mpu_6050_read_data(&gyroAcc, &gyroVal))
   {
     delay(1000);
     return;
@@ -141,16 +141,27 @@ void loop()
 
   calculate_pid();
 
-/*
-  serial_printF("receiver roll: ");
-  serial_println(inputVals.ch1);
-  serial_printF("receiver pitch: ");
-  serial_println(inputVals.ch2);
-  serial_printF("receiver yaw: ");
-  serial_println(inputVals.ch3);
-  serial_printF("intensity knob: ");
+#ifdef unused
+  serial_printF("RX roll: ");
+  serial_print(inputVals.ch1);
+  serial_printF(" pitch: ");
+  serial_print(inputVals.ch2);
+  serial_printF(" yaw: ");
+  serial_print(inputVals.ch3);
+  serial_printF(" knob: ");
   serial_println(inputVals.ch4);
-*/
+#endif
+
+#ifdef unused
+  serial_printF("RX roll: ");
+  serial_print(lastVals.ch1);
+  serial_printF(" pitch: ");
+  serial_print(lastVals.ch2);
+  serial_printF(" yaw: ");
+  serial_print(lastVals.ch3);
+  serial_printF(" knob: ");
+  serial_println(lastVals.ch4);
+#endif
 
   // a bit mixing
   servoVals.ch1 = inputVals.ch1 + pid.output.roll;     // ROLL
@@ -158,13 +169,14 @@ void loop()
   servoVals.ch3 = (PWM_MID - servoVals.ch1) + PWM_MID; // INVERTED ROLL
   servoVals.ch4 = inputVals.ch3 + pid.output.yaw;      // PITCH + YAW?
 
+#ifdef unused
   serial_printF("pid roll: ");
   serial_print(pid.output.roll);
   serial_printF(" pitch: ");
   serial_print(pid.output.pitch);
   serial_printF(" error: ");
   serial_println(pid.d_error.roll);
-  
+#endif  
 
 /*
   serial_printF("calculated roll output : ");
@@ -262,7 +274,7 @@ void calculate_pid()
 
 void setup_MPU()
 {
-  if(!motion::mpu_6050_setup())
+  if(!mpu_6050_setup())
   {
     while (1)
     {
@@ -275,6 +287,7 @@ void setup_MPU()
     }
   }
 
+#ifdef unused
   serial_printlnF("calculated Offsets are");
   serial_printF("pitch offset: ");
   serial_println(gyroCal.x);
@@ -283,7 +296,6 @@ void setup_MPU()
   serial_printF("yaw offset: ");
   serial_println(gyroCal.z);
 
-#ifdef unused
   for (;;)
   {
     xyzFloat g = IMU.getGyrValues();
@@ -302,49 +314,61 @@ void setup_MPU()
 
 
 // ISR for PWM values
-void PWM_ISR()
+/*void PWM_ISR()*/
+ISR(PCINT0_vect)
 {
+
+  digitalWrite(LED_BUILTIN,digitalRead(LED_BUILTIN));
 
   if (lastVals.ch1 == 0 && PINB & B00000001)
   {
+    serial_print("+1+");
     lastVals.ch1 = 1;
     lastVals.timer1 = micros();
   }
   else if (lastVals.ch1 == 1 && !(PINB & B00000001))
   {
+    serial_print("-1-");
     lastVals.ch1 = 0;
     inputVals.ch1 = micros() - lastVals.timer1;
   }
 
   if (lastVals.ch2 == 0 && PINB & B00000010)
   {
+    serial_print("+2+");
     lastVals.ch2 = 1;
     lastVals.timer2 = micros();
   }
   else if (lastVals.ch2 == 1 && !(PINB & B00000010))
   {
+    serial_print("-2-");
     lastVals.ch2 = 0;
     inputVals.ch2 = micros() - lastVals.timer2;
   }
 
   if (lastVals.ch3 == 0 && PINB & B00000100)
   {
+    serial_print("+3+");
+
     lastVals.ch3 = 1;
     lastVals.timer3 = micros();
   }
   else if (lastVals.ch3 == 1 && !(PINB & B00000100))
   {
+    serial_print("-3-");
     lastVals.ch3 = 0;
     inputVals.ch3 = micros() - lastVals.timer3;
   }
 
   if (lastVals.ch4 == 0 && PINB & B00001000)
   {
+    serial_print("+4+");
     lastVals.ch4 = 1;
     lastVals.timer4 = micros();
   }
   else if (lastVals.ch4 == 1 && !(PINB & B00001000))
   {
+    serial_print("-4-");
     lastVals.ch4 = 0;
     inputVals.ch4 = micros() - lastVals.timer4;
   }
@@ -354,6 +378,7 @@ void setup_PWM()
 {
   serial_printlnF("setting up 0, 1, 2, 3 as roll, pitch, yaw and intensivity know");
 
+#ifdef unused
   pinMode(0, INPUT); // roll
   attachInterrupt(digitalPinToInterrupt(0), PWM_ISR, CHANGE);
 
@@ -365,6 +390,13 @@ void setup_PWM()
 
   pinMode(3, INPUT); // intensivity
   attachInterrupt(digitalPinToInterrupt(3), PWM_ISR, CHANGE);
+#endif
+
+  PCICR |= (1 << PCIE0);
+  PCMSK0 |= (1 << PCINT0);
+  PCMSK0 |= (1 << PCINT1);
+  PCMSK0 |= (1 << PCINT2);
+  PCMSK0 |= (1 << PCINT3);
 
   // serial_printlnF("interrupts enabled successfully");
 }

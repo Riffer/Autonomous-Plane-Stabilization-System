@@ -2,17 +2,20 @@
 #define MPU_6050
 
 #include <Wire.h>
-#include <MPU9250_WE.h>
+
+//#include <MPU9250_WE.h>
 #include "main.h"
 
-MPU9250_WE IMU = MPU9250_WE(MPU_ADDRESS);
 
 #ifndef MPU9250_WE_H_
-struct xyzFloat {
+struct xyzFloat
+{
     float x;
     float y;
     float z;
 };
+#else
+    MPU9250_WE IMU = MPU9250_WE(MPU_ADDRESS);
 #endif
 
 
