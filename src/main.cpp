@@ -2,7 +2,8 @@
 //========================================================Date: 27th January 2019=============================================================
 #include "main.h"
 #include "mpu.hpp"
-#include <CPPM.h>
+//#include <CPPM.h>
+#include <jm_CPPM.h>
 
 gyroStruct gyroVal;
 gyroStruct gyroCal;
@@ -326,6 +327,45 @@ void setup_MPU()
 #endif  
 }
 
+
+void setup_CPPM()
+{
+  CPPM.begin();
+  while(1)
+  {
+    CPPM.cycle(); // update some variables and check timeouts...
+
+    if (CPPM.synchronized())
+    {
+      int aile = CPPM.read_us(CPPM_AILE); // aile
+      int elev = CPPM.read_us(CPPM_ELEV); // elevator
+      int thro = CPPM.read_us(CPPM_THRO); // throttle
+      int rudd = CPPM.read_us(CPPM_RUDD); // rudder
+      int gear = CPPM.read_us(CPPM_GEAR); // gear
+      int aux1 = CPPM.read_us(CPPM_AUX1); // flap
+
+      Serial.print(aile);
+      Serial.print(", ");
+      Serial.print(elev);
+      Serial.print(", ");
+      Serial.print(thro);
+      Serial.print(", ");
+      Serial.print(rudd);
+      Serial.print(", ");
+      Serial.print(gear);
+      Serial.print(", ");
+      Serial.print(aux1);
+      Serial.print("\n");
+      Serial.flush();
+    }
+    //else
+    // Serial.println("no ccpm ");
+
+    delay(300);
+  }
+}
+
+#ifdef unused
 void setup_CPPM()
 {
   CPPM.begin();
@@ -361,6 +401,7 @@ void setup_CPPM()
     //Serial.print("no cppm signal");
   }
 }
+#endif
 
   void PWM_ISR()
   {
