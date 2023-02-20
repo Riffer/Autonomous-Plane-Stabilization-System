@@ -1,7 +1,7 @@
 //========================================================Author:SLOMOGANGSTA(VSYK)===========================================================
 //========================================================Date: 27th January 2019=============================================================
 #include "main.h"
-#include "mpu6050.hpp"
+#include "mpu.hpp"
 #include <CPPM.h>
 
 gyroStruct gyroVal;
@@ -287,7 +287,7 @@ void calculate_pid()
 
 void setup_MPU()
 {
-  if(!mpu_6050_setup())
+  if(!mpu_setup())
   {
     //while (1)
     {
