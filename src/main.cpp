@@ -2,6 +2,7 @@
 //========================================================Date: 27th January 2019=============================================================
 #include "main.h"
 #include "mpu6050.hpp"
+#include <CPPM.h>
 
 gyroStruct gyroVal;
 gyroStruct gyroCal;
@@ -13,12 +14,11 @@ pidgainStruct gainyaw;
 
 angleValStruct angleVals;
 
-channelValStruct inputVals;
+volatile channelValStruct inputVals;
 channelValStruct servoVals;
 
 PIDStruct pid;
 
-volatile timerISRStruct lastVals;
 
 double mapf(double val, double in_min, double in_max, double out_min, double out_max);
 
@@ -26,20 +26,26 @@ void calculate_pid();
 void setup_MPU();
 void setup_PWM();
 void setup_SERVO();
+void setup_CPPM();
+
 
 void setup()
 {
   pinMode(LED_BUILTIN, OUTPUT);
 
   Serial.begin(115200);
-  Wire.begin();
 
-  setup_MPU();
+//  setup_PWM();
+  setup_CPPM();
 
-  delay(5000);
+  //Wire.begin();
 
-  setup_PWM();
-  setup_SERVO();
+  //setup_MPU();
+
+  //delay(2500);
+
+  //setup_PWM();
+  //setup_SERVO();
 }
  
 
@@ -49,6 +55,19 @@ void loop()
   static int loopCounter = 0;
   static unsigned long loop_start_time = 0;
   static float pinten = 0;
+  static unsigned long interval = 100;
+  static int onoff = HIGH;
+
+  static unsigned long lastTime = millis(); // initialisiert die Variable, um die letzte Ausführungszeit zu speichern
+  interval = map(inputVals.ch1, 700, 2300, 150, 50);
+  interval = constrain(interval, 50, 150);
+
+  if (millis() >= (lastTime + interval))
+  { // prüft, ob genug Zeit vergangen ist
+    digitalWrite(LED_BUILTIN, onoff);
+    onoff = !onoff;
+    lastTime = millis(); // speichert die letzte Ausführungszeit
+  }
 
   // channel input 4 intensivity to zero if below PWM_MIN
   if (inputVals.ch4 <= PWM_MIN)
@@ -72,11 +91,13 @@ void loop()
     gainyaw.d = pinten;
   }
 
+#ifdef unused
   if (!mpu_6050_read_data(&gyroAcc, &gyroVal))
   {
     delay(1000);
     return;
   }
+#endif
 
   angleVals.pitch += gyroVal.x * 0.0000611;
   angleVals.roll += gyroVal.y * 0.0000611;
@@ -141,7 +162,7 @@ void loop()
 
   calculate_pid();
 
-#ifdef unused
+//#ifdef unused
   serial_printF("RX roll: ");
   serial_print(inputVals.ch1);
   serial_printF(" pitch: ");
@@ -150,18 +171,8 @@ void loop()
   serial_print(inputVals.ch3);
   serial_printF(" knob: ");
   serial_println(inputVals.ch4);
-#endif
+//endif
 
-#ifdef unused
-  serial_printF("RX roll: ");
-  serial_print(lastVals.ch1);
-  serial_printF(" pitch: ");
-  serial_print(lastVals.ch2);
-  serial_printF(" yaw: ");
-  serial_print(lastVals.ch3);
-  serial_printF(" knob: ");
-  serial_println(lastVals.ch4);
-#endif
 
   // a bit mixing
   servoVals.ch1 = inputVals.ch1 + pid.output.roll;     // ROLL
@@ -179,21 +190,23 @@ void loop()
 #endif  
 
 /*
-  serial_printF("calculated roll output : ");
-  serial_print(servoVals.ch1);
-  serial_printF("calculated pitch input : ");
-  serial_print(servoVals.ch2);
-  serial_printF("calculated yaw input : ");
-  serial_println(servoVals.ch4);
+serial_printF("calculated roll output : ");
+serial_print(servoVals.ch1);
+serial_printF("calculated pitch input : ");
+serial_print(servoVals.ch2);
+serial_printF("calculated yaw input : ");
+serial_println(servoVals.ch3);
+serial_printF("calculated yaw input : ");
+serial_println(servoVals.ch3);
 */
+// wait until 0,4 miliseconds gone by (1000 micros are 1 milis, 1 second has 1.000.000 micros!)
+while (micros() - loop_start_time < 4000)
+    ;
+loop_start_time = micros();
 
-  // wait until 0,4 miliseconds gone by (1000 micros are 1 milis, 1 second has 1.000.000 micros!)
-  while (micros() - loop_start_time < 4000); 
-  loop_start_time = micros();
-
-  loopCounter++;
-  if (loopCounter >= 0)
-  {
+loopCounter++;
+if (loopCounter >= 0)
+{
 
     loopCounter = 0;
 
@@ -276,10 +289,10 @@ void setup_MPU()
 {
   if(!mpu_6050_setup())
   {
-    while (1)
+    //while (1)
     {
       serial_printlnF("no gyro - startup failed!");
-      while (1)
+      //while (1)
       {
         delay(250);
         digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
@@ -312,93 +325,104 @@ void setup_MPU()
 #endif  
 }
 
-
-// ISR for PWM values
-/*void PWM_ISR()*/
-ISR(PCINT0_vect)
+void setup_CPPM()
 {
+  CPPM.begin();
+  while(1)
+  if (CPPM.synchronized())
+  {
+    int aile = CPPM.read_us(CPPM_AILE) - 1500; // aile
+    int elev = CPPM.read_us(CPPM_ELEV) - 1500; // elevator
+    int thro = CPPM.read_us(CPPM_THRO) - 1500; // throttle
+    int rudd = CPPM.read_us(CPPM_RUDD) - 1500; // rudder
+    int gear = CPPM.read_us(CPPM_GEAR) - 1500; // gear
+    int aux1 = CPPM.read_us(CPPM_AUX1) - 1500; // flap
 
-  digitalWrite(LED_BUILTIN,digitalRead(LED_BUILTIN));
-
-  if (lastVals.ch1 == 0 && PINB & B00000001)
-  {
-    serial_print("+1+");
-    lastVals.ch1 = 1;
-    lastVals.timer1 = micros();
+    Serial.print(aile);
+    Serial.print(", ");
+    Serial.print(elev);
+    Serial.print(", ");
+    Serial.print(thro);
+    Serial.print(", ");
+    Serial.print(rudd);
+    Serial.print(", ");
+    Serial.print(gear);
+    Serial.print(", ");
+    Serial.print(aux1);
+    Serial.print("\n");
+    Serial.flush();
+    delay(300);
   }
-  else if (lastVals.ch1 == 1 && !(PINB & B00000001))
+  else
   {
-    serial_print("-1-");
-    lastVals.ch1 = 0;
-    inputVals.ch1 = micros() - lastVals.timer1;
-  }
-
-  if (lastVals.ch2 == 0 && PINB & B00000010)
-  {
-    serial_print("+2+");
-    lastVals.ch2 = 1;
-    lastVals.timer2 = micros();
-  }
-  else if (lastVals.ch2 == 1 && !(PINB & B00000010))
-  {
-    serial_print("-2-");
-    lastVals.ch2 = 0;
-    inputVals.ch2 = micros() - lastVals.timer2;
-  }
-
-  if (lastVals.ch3 == 0 && PINB & B00000100)
-  {
-    serial_print("+3+");
-
-    lastVals.ch3 = 1;
-    lastVals.timer3 = micros();
-  }
-  else if (lastVals.ch3 == 1 && !(PINB & B00000100))
-  {
-    serial_print("-3-");
-    lastVals.ch3 = 0;
-    inputVals.ch3 = micros() - lastVals.timer3;
-  }
-
-  if (lastVals.ch4 == 0 && PINB & B00001000)
-  {
-    serial_print("+4+");
-    lastVals.ch4 = 1;
-    lastVals.timer4 = micros();
-  }
-  else if (lastVals.ch4 == 1 && !(PINB & B00001000))
-  {
-    serial_print("-4-");
-    lastVals.ch4 = 0;
-    inputVals.ch4 = micros() - lastVals.timer4;
+    // if not synchronized, do something...
+    delay(300);
+    //Serial.print("no cppm signal");
   }
 }
 
+  void PWM_ISR()
+  {
+  static volatile timerISRStruct lastVals;
+
+  if (lastVals.ch1 == 0 && digitalRead(PIND2))
+  {
+  lastVals.ch1 = 1;
+  lastVals.timer1 = micros();
+  }
+  else if (lastVals.ch1 == 1 && !digitalRead(PIND2))
+  {
+  lastVals.ch1 = 0;
+  inputVals.ch1 = micros() - lastVals.timer1;
+  }
+
+  if (lastVals.ch2 == 0 && digitalRead(PIND3))
+  {
+  lastVals.ch2 = 1;
+  lastVals.timer2 = micros();
+  }
+  else if (lastVals.ch2 == 1 && !digitalRead(PIND3))
+  {
+  lastVals.ch2 = 0;
+  inputVals.ch2 = micros() - lastVals.timer2;
+  }
+
+  if (lastVals.ch3 == 0 && digitalRead(PIND6))
+  {
+  lastVals.ch3 = 1;
+  lastVals.timer3 = micros();
+  }
+  else if (lastVals.ch3 == 1 && !digitalRead(PIND6))
+  {
+  lastVals.ch3 = 0;
+  inputVals.ch3 = micros() - lastVals.timer3;
+  }
+
+  if (lastVals.ch4 == 0 && digitalRead(PIND7))
+  {
+  lastVals.ch4 = 1;
+  lastVals.timer4 = micros();
+  }
+  else if (lastVals.ch4 == 1 && !digitalRead(PIND7))
+  {
+  lastVals.ch4 = 0;
+  inputVals.ch4 = micros() - lastVals.timer4;
+  }
+}
+
+
 void setup_PWM()
 {
-  serial_printlnF("setting up 0, 1, 2, 3 as roll, pitch, yaw and intensivity know");
+  
+  pinMode(PIND2, INPUT_PULLUP);
+  pinMode(PIND3, INPUT_PULLUP);
+  pinMode(PIND4, INPUT_PULLUP);
+  pinMode(PIND5, INPUT_PULLUP);
 
-#ifdef unused
-  pinMode(0, INPUT); // roll
-  attachInterrupt(digitalPinToInterrupt(0), PWM_ISR, CHANGE);
-
-  pinMode(1, INPUT); // pitch
-  attachInterrupt(digitalPinToInterrupt(1), PWM_ISR, CHANGE);
-
-  pinMode(2, INPUT); // yaw
-  attachInterrupt(digitalPinToInterrupt(2), PWM_ISR, CHANGE);
-
-  pinMode(3, INPUT); // intensivity
-  attachInterrupt(digitalPinToInterrupt(3), PWM_ISR, CHANGE);
-#endif
-
-  PCICR |= (1 << PCIE0);
-  PCMSK0 |= (1 << PCINT0);
-  PCMSK0 |= (1 << PCINT1);
-  PCMSK0 |= (1 << PCINT2);
-  PCMSK0 |= (1 << PCINT3);
-
-  // serial_printlnF("interrupts enabled successfully");
+  attachInterrupt(digitalPinToInterrupt(PIND2), PWM_ISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIND3), PWM_ISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIND4), PWM_ISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIND5), PWM_ISR, CHANGE);
 }
 
 void setup_Wire()
