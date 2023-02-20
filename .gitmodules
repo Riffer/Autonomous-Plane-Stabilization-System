@@ -1,3 +1,0 @@
-[submodule "lib/MPU9250_WE"]
-	path = lib/MPU9250_WE
-	url = git@github.com:Riffer/MPU9250_WE.git
