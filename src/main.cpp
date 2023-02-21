@@ -335,6 +335,7 @@ void setup_CPPM()
   {
     CPPM.cycle(); // update some variables and check timeouts...
 
+
     if (CPPM.synchronized())
     {
       int aile = CPPM.read_us(CPPM_AILE); // aile
@@ -357,11 +358,12 @@ void setup_CPPM()
       Serial.print(aux1);
       Serial.print("\n");
       Serial.flush();
+      delay(25);
     }
     //else
     // Serial.println("no ccpm ");
 
-    delay(300);
+    //delay(300);
   }
 }
 
