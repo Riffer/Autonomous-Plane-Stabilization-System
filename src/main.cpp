@@ -25,9 +25,9 @@ double mapf(double val, double in_min, double in_max, double out_min, double out
 
 void calculate_pid();
 void setup_MPU();
-void setup_PWM();
+//void setup_PWM();
 void setup_SERVO();
-void setup_CPPM();
+void cycle_CPPM();
 
 
 void setup()
@@ -36,14 +36,15 @@ void setup()
 
   Serial.begin(115200);
 
-//  setup_PWM();
-  setup_CPPM();
+  CPPM.begin();
+  //setup_CPPM();
 
-  //Wire.begin();
+  Wire.begin();
 
-  //setup_MPU();
+  setup_MPU();
 
-  //delay(2500);
+
+  delay(2500);
 
   //setup_PWM();
   //setup_SERVO();
@@ -60,8 +61,12 @@ void loop()
   static int onoff = HIGH;
 
   static unsigned long lastTime = millis(); // initialisiert die Variable, um die letzte Ausführungszeit zu speichern
+
+  cycle_CPPM();
+
   interval = map(inputVals.ch1, 700, 2300, 150, 50);
   interval = constrain(interval, 50, 150);
+
 
   if (millis() >= (lastTime + interval))
   { // prüft, ob genug Zeit vergangen ist
@@ -69,6 +74,7 @@ void loop()
     onoff = !onoff;
     lastTime = millis(); // speichert die letzte Ausführungszeit
   }
+
 
   // channel input 4 intensivity to zero if below PWM_MIN
   if (inputVals.ch4 <= PWM_MIN)
@@ -92,13 +98,13 @@ void loop()
     gainyaw.d = pinten;
   }
 
-#ifdef unused
-  if (!mpu_6050_read_data(&gyroAcc, &gyroVal))
+//#ifdef unused
+  if (!mpu_read_data(&gyroAcc, &gyroVal))
   {
     delay(1000);
     return;
   }
-#endif
+//#endif
 
   angleVals.pitch += gyroVal.x * 0.0000611;
   angleVals.roll += gyroVal.y * 0.0000611;
@@ -163,7 +169,7 @@ void loop()
 
   calculate_pid();
 
-//#ifdef unused
+#ifdef unused
   serial_printF("RX roll: ");
   serial_print(inputVals.ch1);
   serial_printF(" pitch: ");
@@ -172,8 +178,7 @@ void loop()
   serial_print(inputVals.ch3);
   serial_printF(" knob: ");
   serial_println(inputVals.ch4);
-//endif
-
+#endif
 
   // a bit mixing
   servoVals.ch1 = inputVals.ch1 + pid.output.roll;     // ROLL
@@ -181,27 +186,19 @@ void loop()
   servoVals.ch3 = (PWM_MID - servoVals.ch1) + PWM_MID; // INVERTED ROLL
   servoVals.ch4 = inputVals.ch3 + pid.output.yaw;      // PITCH + YAW?
 
-#ifdef unused
+//#ifdef unused
   serial_printF("pid roll: ");
   serial_print(pid.output.roll);
   serial_printF(" pitch: ");
   serial_print(pid.output.pitch);
   serial_printF(" error: ");
   serial_println(pid.d_error.roll);
-#endif  
+//#endif
 
-/*
-serial_printF("calculated roll output : ");
-serial_print(servoVals.ch1);
-serial_printF("calculated pitch input : ");
-serial_print(servoVals.ch2);
-serial_printF("calculated yaw input : ");
-serial_println(servoVals.ch3);
-serial_printF("calculated yaw input : ");
-serial_println(servoVals.ch3);
-*/
-// wait until 0,4 miliseconds gone by (1000 micros are 1 milis, 1 second has 1.000.000 micros!)
-while (micros() - loop_start_time < 4000)
+
+
+  // wait until 0,4 miliseconds gone by (1000 micros are 1 milis, 1 second has 1.000.000 micros!)
+  while (micros() - loop_start_time < 4000)
     ;
 loop_start_time = micros();
 
@@ -328,16 +325,21 @@ void setup_MPU()
 }
 
 
-void setup_CPPM()
+void cycle_CPPM()
 {
-  CPPM.begin();
-  while(1)
+  //while(1)
   {
     CPPM.cycle(); // update some variables and check timeouts...
 
 
     if (CPPM.synchronized())
     {
+      inputVals.ch1 = CPPM.read_us(0);
+      inputVals.ch2 = CPPM.read_us(1);
+      inputVals.ch3 = CPPM.read_us(2);
+      inputVals.ch4 = CPPM.read_us(3);
+
+#ifdef unused
       int aile = CPPM.read_us(CPPM_AILE); // aile
       int elev = CPPM.read_us(CPPM_ELEV); // elevator
       int thro = CPPM.read_us(CPPM_THRO); // throttle
@@ -359,6 +361,8 @@ void setup_CPPM()
       Serial.print("\n");
       Serial.flush();
       delay(25);
+      #endif
+
     }
     //else
     // Serial.println("no ccpm ");
@@ -367,44 +371,8 @@ void setup_CPPM()
   }
 }
 
-#ifdef unused
-void setup_CPPM()
-{
-  CPPM.begin();
-  while(1)
-  if (CPPM.synchronized())
-  {
-    int aile = CPPM.read_us(CPPM_AILE) - 1500; // aile
-    int elev = CPPM.read_us(CPPM_ELEV) - 1500; // elevator
-    int thro = CPPM.read_us(CPPM_THRO) - 1500; // throttle
-    int rudd = CPPM.read_us(CPPM_RUDD) - 1500; // rudder
-    int gear = CPPM.read_us(CPPM_GEAR) - 1500; // gear
-    int aux1 = CPPM.read_us(CPPM_AUX1) - 1500; // flap
-
-    Serial.print(aile);
-    Serial.print(", ");
-    Serial.print(elev);
-    Serial.print(", ");
-    Serial.print(thro);
-    Serial.print(", ");
-    Serial.print(rudd);
-    Serial.print(", ");
-    Serial.print(gear);
-    Serial.print(", ");
-    Serial.print(aux1);
-    Serial.print("\n");
-    Serial.flush();
-    delay(300);
-  }
-  else
-  {
-    // if not synchronized, do something...
-    delay(300);
-    //Serial.print("no cppm signal");
-  }
-}
-#endif
-
+  // can not be used on NANO, because only the first two PINs have an INPUT Interrupt!
+  #ifdef unused
   void PWM_ISR()
   {
   static volatile timerISRStruct lastVals;
@@ -468,6 +436,8 @@ void setup_PWM()
   attachInterrupt(digitalPinToInterrupt(PIND4), PWM_ISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PIND5), PWM_ISR, CHANGE);
 }
+#endif
+
 
 void setup_Wire()
 {

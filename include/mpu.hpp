@@ -143,49 +143,6 @@ bool mpu_read_data(gyroStruct *acc, gyroStruct *gyro) // reads the current acc a
 // setup MPU in a cascade
 bool mpu_setup()
 {
-    /*
-    if (!IMU.init())
-    {
-        serial_printlnF("IMU does not respond");
-        return false;
-    }*/
-
-    //IMU.autoOffsets();
-
-    //IMU.enableGyrDLPF();
-    //IMU.setGyrDLPF(MPU6500_DLPF_6);
-    //IMU.setSampleRateDivider(5);
-    //IMU.setGyrRange(MPU6500_GYRO_RANGE_1000);
-    //IMU.setAccRange(MPU6500_ACC_RANGE_8G);
-    //IMU.enableAccDLPF(true);
-    //IMU.setAccDLPF(MPU6500_DLPF_6);
-
- #ifdef unused   
-    //for (;;)
-    {
-        xyzFloat a = IMU.getAngles();
-        serial_printF("a.x: ");
-        serial_print(a.x);
-        serial_printF(" a.y: ");
-        serial_print(a.y);
-        serial_printF(" a.z: ");
-        serial_print(a.z);
-        serial_printlnF("");
-
-        xyzFloat g = IMU.getGValues();
-        serial_printF("g.x: ");
-        serial_print(g.x);
-        serial_printF(" g.y: ");
-        serial_print(g.y);
-        serial_printF(" g.z: ");
-        serial_print(g.z);
-        serial_printlnF("");
-
-
-        delay(1000);
-    }
-#endif
-    
     serial_printlnF("setting up registers of MPU6050");
 
     serial_printF("mpu: ");
@@ -238,6 +195,34 @@ bool mpu_setup()
 
     return false;
   
+}
+
+void mpu_test()
+{
+#ifdef unused
+    for (;;)
+    {
+        xyzFloat a = IMU.getAngles();
+        serial_printF("a.x: ");
+        serial_print(a.x);
+        serial_printF(" a.y: ");
+        serial_print(a.y);
+        serial_printF(" a.z: ");
+        serial_print(a.z);
+        serial_printlnF("");
+
+        xyzFloat g = IMU.getGValues();
+        serial_printF("g.x: ");
+        serial_print(g.x);
+        serial_printF(" g.y: ");
+        serial_print(g.y);
+        serial_printF(" g.z: ");
+        serial_print(g.z);
+        serial_printlnF("");
+
+        delay(1000);
+    }
+#endif
 }
 
 bool mpu_calibrate(gyroStruct *acc, gyroStruct *gyro, gyroStruct *cal)
