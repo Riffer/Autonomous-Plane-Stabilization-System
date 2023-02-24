@@ -218,7 +218,7 @@ if (loopCounter >= 0)
 
     // PWM out in a loop - initally set high for all 4 channels and look until all 4 channels gone by
     byte cnt = 0;
-    while (cnt < 4)
+    while (cnt < 4) // leading to slowdown of the loop
     {
       cnt = 0;
       unsigned long esc_loop_start_time = micros();
@@ -255,8 +255,24 @@ double mapf(double val, double in_min, double in_max, double out_min, double out
  * TODO: understand :-)
  */
 
+void calculate(PIDStruct *_pid, pidgainStruct *_gain)
+{
+  float temp_pid_error;
+
+  temp_pid_error = _pid->input.pitch - _pid->setpoint.pitch; // check error for pitch versus setpoint
+  _pid->i_mem.pitch += _gain->i * temp_pid_error; // integrate error for pitch over gain
+  _pid->i_mem.pitch = constrain(_pid->i_mem.pitch, -_gain->max, _gain->max); // constrain pitch integration in cage
+
+  _pid->output.pitch = _gain->p * temp_pid_error + _pid->i_mem.pitch + _gain->d * (temp_pid_error - _pid->d_error.pitch); // calculate output pitch with knob, error, integration and gain by acutal error minus last error
+  _pid->output.pitch = constrain(_pid->output.pitch, -_gain->max, _gain->max); // keep pitch in cage
+  _pid->d_error.pitch = temp_pid_error; // remember last error for pitch
+}
+
+
 void calculate_pid()
 {
+
+#ifdef irrelevant
   float pid_error_temp;
 
   pid_error_temp = pid.input.pitch - pid.setpoint.pitch; // check error for pitch versus setpoint
@@ -282,6 +298,7 @@ void calculate_pid()
   pid.output.yaw = gainyaw.p * pid_error_temp + pid.i_mem.yaw + gainyaw.d * (pid_error_temp - pid.d_error.yaw); // calulate outputch yaw, with knob, error, integration, gain by current error minus last error
   pid.output.yaw = constrain(pid.output.yaw, -gainyaw.max, gainyaw.max); // keep output for yaw in cage
   pid.d_error.yaw = pid_error_temp; // remember last error for yaw
+#endif // unused
 
 }
 
