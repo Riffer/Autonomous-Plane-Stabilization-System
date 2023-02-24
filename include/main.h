@@ -15,7 +15,6 @@ enum {ROLL=0, PITCH=1, YAW=2, CHANNEL_MAX};
 
 struct pidgainStruct
 {
-  int chan = -1;
   float p = 0;
   float i = 0;
   float d = 0;
