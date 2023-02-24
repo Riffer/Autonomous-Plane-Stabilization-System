@@ -249,11 +249,9 @@ double mapf(double val, double in_min, double in_max, double out_min, double out
   return (val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-/**
- * TODO: understand :-)
- */
 
-void calculate(PIDStruct *_pid, pidgainStruct *_gain)
+
+void inline calculate(PIDStruct *_pid, pidgainStruct *_gain)
 {
   float temp_pid_error;
 
@@ -266,9 +264,16 @@ void calculate(PIDStruct *_pid, pidgainStruct *_gain)
   _pid->d_error.pitch = temp_pid_error; // remember last error for pitch
 }
 
+/**
+ * TODO: understand :-)
+ */
 
 void calculate_pid()
 {
+
+  calculate(&pid, &gainpitch);
+  calculate(&pid, &gainroll);
+  calculate(&pid, &gainyaw);
 
 #ifdef irrelevant
   float pid_error_temp;
@@ -298,11 +303,8 @@ void calculate_pid()
   pid.output.yaw = gainyaw.p * pid_error_temp + pid.i_mem.yaw + gainyaw.d * (pid_error_temp - pid.d_error.yaw); // calulate outputch yaw, with knob, error, integration, gain by current error minus last error
   pid.output.yaw = constrain(pid.output.yaw, -gainyaw.max, gainyaw.max); // keep output for yaw in cage
   pid.d_error.yaw = pid_error_temp; // remember last error for yaw
-<<<<<<< HEAD
 #endif // unused
 
-=======
->>>>>>> 3444330cdc018422216c24167920ae757e9b6a08
 }
 
 void setup_MPU()
