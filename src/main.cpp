@@ -9,6 +9,7 @@ gyroStruct gyroVal;
 gyroStruct gyroCal;
 gyroStruct gyroAcc;
 
+//TODO: Make an array of 3!
 pidgainStruct gainroll;
 pidgainStruct gainpitch;
 pidgainStruct gainyaw;
@@ -33,6 +34,11 @@ void setup_Wire();
 void setup()
 {
   pinMode(LED_BUILTIN, OUTPUT);
+
+  // ignore false bug: https://github.com/microsoft/vscode-cpptools/issues/5550
+  //gainpitch.chan = PITCH;
+  //gainroll.chan = ROLL;
+  //gainyaw.chan = YAW;
 
   Serial.begin(115200);
 
