@@ -35,27 +35,18 @@ void setup()
 {
   pinMode(LED_BUILTIN, OUTPUT);
 
-  // ignore false bug: https://github.com/microsoft/vscode-cpptools/issues/5550
-  //gainpitch.chan = PITCH;
-  //gainroll.chan = ROLL;
-  //gainyaw.chan = YAW;
-
   Serial.begin(115200);
 
-  CPPM.begin();
-  //setup_CPPM();
+  CPPM.begin(); // setup CPPM - will be called in loop
 
-  setup_Wire();
+  setup_Wire(); // setup Wire for I2C incl. check of speed
 
-  setup_MPU();
+  setup_MPU();  // setup I2C device
 
+  setup_SERVO(); // setup output pins
 
   delay(2500);
-
-  //setup_PWM();
-  //setup_SERVO();
 }
- 
 
 void loop()
 {
