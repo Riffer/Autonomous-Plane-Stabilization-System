@@ -254,18 +254,18 @@ double mapf(double val, double in_min, double in_max, double out_min, double out
 }
 
 
-
-void inline calculate(PIDStruct *_pid, pidgainStruct *_gain)
+/* TODO code is wrong! */
+void inline calculate(PIDStruct *pid, pidgainStruct *gain)
 {
   float temp_pid_error;
 
-  temp_pid_error = _pid->input.pitch - _pid->setpoint.pitch; // check error for pitch versus setpoint
-  _pid->i_mem.pitch += _gain->i * temp_pid_error; // integrate error for pitch over gain
-  _pid->i_mem.pitch = constrain(_pid->i_mem.pitch, -_gain->max, _gain->max); // constrain pitch integration in cage
+  temp_pid_error = pid->input.pitch - pid->setpoint.pitch; // check error for pitch versus setpoint
+  pid->i_mem.pitch += gain->i * temp_pid_error; // integrate error for pitch over gain
+  pid->i_mem.pitch = constrain(pid->i_mem.pitch, -gain->max, gain->max); // constrain pitch integration in cage
 
-  _pid->output.pitch = _gain->p * temp_pid_error + _pid->i_mem.pitch + _gain->d * (temp_pid_error - _pid->d_error.pitch); // calculate output pitch with knob, error, integration and gain by acutal error minus last error
-  _pid->output.pitch = constrain(_pid->output.pitch, -_gain->max, _gain->max); // keep pitch in cage
-  _pid->d_error.pitch = temp_pid_error; // remember last error for pitch
+  pid->output.pitch = gain->p * temp_pid_error + pid->i_mem.pitch + gain->d * (temp_pid_error - pid->d_error.pitch); // calculate output pitch with knob, error, integration and gain by acutal error minus last error
+  pid->output.pitch = constrain(pid->output.pitch, -gain->max, gain->max); // keep pitch in cage
+  pid->d_error.pitch = temp_pid_error; // remember last error
 }
 
 /**
@@ -274,12 +274,12 @@ void inline calculate(PIDStruct *_pid, pidgainStruct *_gain)
 
 void calculate_pid()
 {
-
+#ifdef irrelevant
   calculate(&pid, &gainpitch);
   calculate(&pid, &gainroll);
   calculate(&pid, &gainyaw);
+#endif // unused
 
-#ifdef irrelevant
   float pid_error_temp;
 
   pid_error_temp = pid.input.pitch - pid.setpoint.pitch; // check error for pitch versus setpoint
@@ -307,7 +307,6 @@ void calculate_pid()
   pid.output.yaw = gainyaw.p * pid_error_temp + pid.i_mem.yaw + gainyaw.d * (pid_error_temp - pid.d_error.yaw); // calulate outputch yaw, with knob, error, integration, gain by current error minus last error
   pid.output.yaw = constrain(pid.output.yaw, -gainyaw.max, gainyaw.max); // keep output for yaw in cage
   pid.d_error.yaw = pid_error_temp; // remember last error for yaw
-#endif // unused
 
 }
 
