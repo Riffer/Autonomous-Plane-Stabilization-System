@@ -1,5 +1,5 @@
-#ifndef MPU_6050
-#define MPU_6050
+#ifndef MPU_H
+#define MPU_H
 
 #include <Wire.h>
 
@@ -7,21 +7,18 @@
 #include "main.h"
 
 
-#ifndef MPU9250_WE_H_
 struct xyzFloat
 {
     float x;
     float y;
     float z;
 };
-#else
-    MPU9250_WE IMU = MPU9250_WE(MPU_ADDRESS);
-#endif
+
 
 
 #define I2C_ERROR_MSG "I2C error"
 
-uint8_t mpu_6050_write_pair(int a, int b, bool waitAfterWriteMs=300)
+uint8_t mpu_write_pair(int a, int b, bool waitAfterWriteMs=300)
 {
     Wire.beginTransmission(MPU_ADDRESS);
     Wire.write(a);
@@ -36,7 +33,7 @@ uint8_t mpu_6050_write_pair(int a, int b, bool waitAfterWriteMs=300)
     return error;
 }
 
-uint8_t mpu_6050_read8(uint8_t reg)
+uint8_t mpu_read8(uint8_t reg)
 {
     uint8_t error;
     Wire.beginTransmission(MPU_ADDRESS);
@@ -61,11 +58,11 @@ uint8_t mpu_6050_read8(uint8_t reg)
 
 uint8_t whoAmI()
 {
-    return mpu_6050_read8(0x75);
+    return mpu_read8(0x75);
 }
 
 
-uint64_t mpu_6050_read3x16(uint8_t reg)
+uint64_t mpu_read3x16(uint8_t reg)
 {
     uint8_t triple[6];
     uint64_t regValue = 0;
@@ -90,7 +87,7 @@ uint64_t mpu_6050_read3x16(uint8_t reg)
 
 xyzFloat getRawValues(uint8_t reg)
 {
-    uint64_t const xyzDataReg = mpu_6050_read3x16(reg);
+    uint64_t const xyzDataReg = mpu_read3x16(reg);
     int16_t const xRaw = static_cast<int16_t>((xyzDataReg >> 32) & 0xFFFF);
     int16_t const yRaw = static_cast<int16_t>((xyzDataReg >> 16) & 0xFFFF);
     int16_t const zRaw = static_cast<int16_t>(xyzDataReg & 0xFFFF);
@@ -108,7 +105,7 @@ xyzFloat getRawValues(uint8_t reg)
 }
 
 int temp = 0;
-bool mpu_6050_read_data(gyroStruct *acc, gyroStruct *gyro) // reads the current acc and gyro in one take (from starting address)
+bool mpu_read_data(gyroStruct *acc, gyroStruct *gyro) // reads the current acc and gyro in one take (from starting address)
 {
 
     uint8_t error;
@@ -144,51 +141,8 @@ bool mpu_6050_read_data(gyroStruct *acc, gyroStruct *gyro) // reads the current 
 }
 
 // setup MPU in a cascade
-bool mpu_6050_setup()
+bool mpu_setup()
 {
-    /*
-    if (!IMU.init())
-    {
-        serial_printlnF("IMU does not respond");
-        return false;
-    }*/
-
-    //IMU.autoOffsets();
-
-    //IMU.enableGyrDLPF();
-    //IMU.setGyrDLPF(MPU6500_DLPF_6);
-    //IMU.setSampleRateDivider(5);
-    //IMU.setGyrRange(MPU6500_GYRO_RANGE_1000);
-    //IMU.setAccRange(MPU6500_ACC_RANGE_8G);
-    //IMU.enableAccDLPF(true);
-    //IMU.setAccDLPF(MPU6500_DLPF_6);
-
- #ifdef unused   
-    //for (;;)
-    {
-        xyzFloat a = IMU.getAngles();
-        serial_printF("a.x: ");
-        serial_print(a.x);
-        serial_printF(" a.y: ");
-        serial_print(a.y);
-        serial_printF(" a.z: ");
-        serial_print(a.z);
-        serial_printlnF("");
-
-        xyzFloat g = IMU.getGValues();
-        serial_printF("g.x: ");
-        serial_print(g.x);
-        serial_printF(" g.y: ");
-        serial_print(g.y);
-        serial_printF(" g.z: ");
-        serial_print(g.z);
-        serial_printlnF("");
-
-
-        delay(1000);
-    }
-#endif
-    
     serial_printlnF("setting up registers of MPU6050");
 
     serial_printF("mpu: ");
@@ -213,37 +167,65 @@ bool mpu_6050_setup()
     serial_println(mputype_string);
 
     serial_printF("powerregister: ");
-    serial_println(mpu_6050_read8(0x6B));
+    serial_println(mpu_read8(0x6B));
 
     serial_printF("fifo: ");
-    serial_println(mpu_6050_read8(0x23));
+    serial_println(mpu_read8(0x23));
 
 
-    uint8_t c = mpu_6050_read8(0x1B); // get current GYRO_CONFIG register value
+    uint8_t c = mpu_read8(0x1B); // get current GYRO_CONFIG register value
 
 #define  GFS_250DPS  0
     c = c & ~0x02; // Clear Fchoice bits [1:0] 
     c = c & ~0x18; // Clear AFS bits [4:3]
     c = c | GFS_250DPS << 3; // Set full scale range for the gyro
 
-    if (0 == mpu_6050_write_pair(0x6B, 0x80))         // reset
-        if (0 == mpu_6050_write_pair(0x6B, 0x00))     // disable sleep
-            if (0 == mpu_6050_write_pair(0x6B, 0x01)) // auto clock source to be PLL gyrospcove
-                if (0 == mpu_6050_write_pair(0x37, 0x22))
-                    if (0 == mpu_6050_write_pair(0x38, 0x01))                         // Enable data ready (bit 0) interrupt
-                        if (0 == mpu_6050_write_pair(0x1A, 0x03))                     // disable FSYNC, set gyro to 41-42 Hz
-                            if (0 == mpu_6050_write_pair(0x19, 0x04))                 // set samplerate to 200hz
-                                if (0 == mpu_6050_write_pair(0x37, 0x02))             // bypass enable
-                                    if (0 == mpu_6050_write_pair(0x1B, c))            // write gyroscope scale
-                                        if (0 == mpu_6050_write_pair(0x1C, 0x03))     // configure the accelerometer (+/-8g)
-                                            if (0 == mpu_6050_write_pair(0x1B, 0x08)) // configure the gyro (500dps full scale)
+    if (0 == mpu_write_pair(0x6B, 0x80))         // reset
+        if (0 == mpu_write_pair(0x6B, 0x00))     // disable sleep
+            if (0 == mpu_write_pair(0x6B, 0x01)) // auto clock source to be PLL gyrospcove
+                if (0 == mpu_write_pair(0x37, 0x22))
+                    if (0 == mpu_write_pair(0x38, 0x01))                         // Enable data ready (bit 0) interrupt
+                        if (0 == mpu_write_pair(0x1A, 0x03))                     // disable FSYNC, set gyro to 41-42 Hz
+                            if (0 == mpu_write_pair(0x19, 0x04))                 // set samplerate to 200hz
+                                if (0 == mpu_write_pair(0x37, 0x02))             // bypass enable
+                                    if (0 == mpu_write_pair(0x1B, c))            // write gyroscope scale
+                                        if (0 == mpu_write_pair(0x1C, 0x03))     // configure the accelerometer (+/-8g)
+                                            if (0 == mpu_write_pair(0x1B, 0x08)) // configure the gyro (500dps full scale)
                                                 return true;
 
     return false;
   
 }
 
-bool mpu_6050_calibrate(gyroStruct *acc, gyroStruct *gyro, gyroStruct *cal)
+void mpu_test()
+{
+#ifdef unused
+    for (;;)
+    {
+        xyzFloat a = IMU.getAngles();
+        serial_printF("a.x: ");
+        serial_print(a.x);
+        serial_printF(" a.y: ");
+        serial_print(a.y);
+        serial_printF(" a.z: ");
+        serial_print(a.z);
+        serial_printlnF("");
+
+        xyzFloat g = IMU.getGValues();
+        serial_printF("g.x: ");
+        serial_print(g.x);
+        serial_printF(" g.y: ");
+        serial_print(g.y);
+        serial_printF(" g.z: ");
+        serial_print(g.z);
+        serial_printlnF("");
+
+        delay(1000);
+    }
+#endif
+}
+
+bool mpu_calibrate(gyroStruct *acc, gyroStruct *gyro, gyroStruct *cal)
 {
     serial_printlnF("calculating acc offset");
     for (int cal_int = 0; cal_int < PWM_MAX; cal_int++)
@@ -254,7 +236,7 @@ bool mpu_6050_calibrate(gyroStruct *acc, gyroStruct *gyro, gyroStruct *cal)
             digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
         }
 
-        if (!mpu_6050_read_data(acc, gyro))
+        if (!mpu_read_data(acc, gyro))
             return false;
 
         cal->x += gyro->x;
@@ -279,4 +261,4 @@ bool mpu_6050_calibrate(gyroStruct *acc, gyroStruct *gyro, gyroStruct *cal)
     return true;
 }
 
-#endif // MPU_6050
+#endif // MPU_H

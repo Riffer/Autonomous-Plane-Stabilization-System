@@ -3,7 +3,7 @@
 
 void cppm_cycle(void)
 {
-	if (CPPM.synchronized())
+	if (CPPM.synchronized() && CPPM.received())
 	{
 //		// good for DX8-R615X
 //		int aile = (CPPM.read(CPPM_AILE) - 1500*2) / 8 * 125 / 128; // aile -100% .. +100%
@@ -20,13 +20,31 @@ void cppm_cycle(void)
 		int gear = CPPM.read_us(CPPM_GEAR) - 1500; // gear
 		int aux1 = CPPM.read_us(CPPM_AUX1) - 1500; // flap
 
+#if 0
 		Serial.print(aile); Serial.print(", ");
 		Serial.print(elev); Serial.print(", ");
 		Serial.print(thro); Serial.print(", ");
 		Serial.print(rudd); Serial.print(", ");
 		Serial.print(gear); Serial.print(", ");
 		Serial.print(aux1); Serial.print("\n");
+#else
+		for (int i=0; i<(CPPM_MSERVO + 2); i++) {
+			Serial.print('\t');
+			Serial.print(CPPM._sync2[i]/2); // width of synch pulses
+		}
+		Serial.println();
+		for (int i=0; i<(CPPM_MSERVO + 2); i++) {
+			Serial.print('\t');
+			Serial.print(CPPM._puls3[i]/2); // width of servo pulses
+		}
+		Serial.println();
+#endif
+
 		Serial.flush();
+
+		delay(100);
+
+		CPPM.received();
 	}
 	else
 	{
@@ -36,7 +54,7 @@ void cppm_cycle(void)
 
 void setup()
 {
-	Serial.begin(9600);
+	Serial.begin(115200);
 
 	CPPM.begin();
 }
@@ -44,6 +62,4 @@ void setup()
 void loop()
 {
 	cppm_cycle();
-
-	delay(100);
 }

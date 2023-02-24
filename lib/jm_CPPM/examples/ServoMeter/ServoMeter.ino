@@ -96,7 +96,7 @@ ISR(TIMER1_OVF_vect)
 
 void setup()
 {
-	Serial.begin(9600);
+	Serial.begin(115200);
 
 	ServoMeter_begin();
 }
