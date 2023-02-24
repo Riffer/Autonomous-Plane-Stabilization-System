@@ -11,6 +11,8 @@
 
 #define MPU_ADDRESS 0x68
 
+enum {ROLL=0, PITCH=1, YAW=2, CHANNEL_MAX};
+
 struct pidgainStruct
 {
   float p = 0;
@@ -18,6 +20,7 @@ struct pidgainStruct
   float d = 0;
   const int max = 400;
   const int max_i = 100;
+  int chan = -1;
 };
 
 struct channelValStruct 
@@ -37,6 +40,7 @@ struct gyroStruct
   //bool set_gyro_angles;
 };
 
+
 struct timerISRStruct
 {
   byte ch1 = 0;             // Receiver Roll
@@ -52,21 +56,31 @@ struct timerISRStruct
 
 struct angleValStruct
 {
-  float pitch = 0;
+  float Chan[CHANNEL_MAX];
+  float Acc[CHANNEL_MAX];
+  float Out[CHANNEL_MAX];
+  float Adjust[CHANNEL_MAX];
+/*
   float roll = 0;
   float rollAcc = 0;
-  float pitchAcc = 0;
-  float pitchOut = 0;
   float rollOut = 0;
   float rollAdjust = 0;
+
+  float pitch = 0;
+  float pitchAcc = 0;
+  float pitchOut = 0;
   float pitchAdjust = 0;
+*/  
 };
 
 struct RollPitchYawStruct
 {
+  float chan[CHANNEL_MAX];
+/*
   float roll = 0;
   float pitch = 0;
   float yaw = 0;
+*/
 };
 
 struct PIDStruct

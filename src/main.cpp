@@ -110,66 +110,71 @@ void loop()
   gyroVal.y -= gyroCal.y;
   gyroVal.z -= gyroCal.z;
 
-  angleVals.pitch += gyroVal.x * 0.0000611;
-  angleVals.roll += gyroVal.y * 0.0000611;
 
-  angleVals.pitch += angleVals.roll * sin(gyroVal.z * 0.000001066);
-  angleVals.roll -= angleVals.pitch * sin(gyroVal.z * 0.000001066);
+  angleVals.Chan[PITCH] += gyroVal.x * 0.0000611;
+  angleVals.Chan[ROLL] += gyroVal.y * 0.0000611;
+
+  angleVals.Chan[PITCH] += angleVals.Chan[ROLL] * sin(gyroVal.z * 0.000001066);
+  angleVals.Chan[ROLL] -= angleVals.Chan[PITCH] * sin(gyroVal.z * 0.000001066);
 
   gyroAcc.totalVector = sqrt((gyroAcc.x * gyroAcc.x) + (gyroAcc.y * gyroAcc.y) + (gyroAcc.z * gyroAcc.z));
-  angleVals.pitchAcc = asin((float)gyroAcc.y / gyroAcc.totalVector) * 57.296;
-  angleVals.rollAcc = asin((float)gyroAcc.x / gyroAcc.totalVector) * -57.296;
+  angleVals.Acc[PITCH] = asin((float)gyroAcc.y / gyroAcc.totalVector) * 57.296;
+  angleVals.Acc[ROLL] = asin((float)gyroAcc.x / gyroAcc.totalVector) * -57.296;
 
-  angleVals.pitchAcc -= 0.0;
-  angleVals.rollAcc -= 0.0;
+  angleVals.Acc[PITCH] -= 0.0;
+  angleVals.Acc[ROLL] -= 0.0;
 
   if (set_gyro_angles)
   {
-    angleVals.pitch = angleVals.pitch * 0.9996 + angleVals.pitchAcc * 0.0004;
-    angleVals.roll = angleVals.roll * 0.9996 + angleVals.rollAcc * 0.0004;
+    angleVals.Chan[PITCH] = angleVals.Chan[PITCH] * 0.9996 + angleVals.Acc[PITCH] * 0.0004;
+    angleVals.Chan[ROLL] = angleVals.Chan[ROLL] * 0.9996 + angleVals.Acc[ROLL] * 0.0004;
   }
   else
   {
-    angleVals.pitch = angleVals.pitchAcc;
-    angleVals.roll = angleVals.rollAcc;
+    angleVals.Chan[PITCH] = angleVals.Acc[PITCH];
+    angleVals.Chan[ROLL] = angleVals.Acc[ROLL];
     set_gyro_angles = true;
   }
 
-  angleVals.pitchOut = angleVals.pitchOut * 0.9 + angleVals.pitch * 0.1;
-  angleVals.rollOut = angleVals.rollOut * 0.9 + angleVals.roll * 0.1;
+  angleVals.Out[PITCH] = angleVals.Out[PITCH] * 0.9 + angleVals.Chan[PITCH] * 0.1;
+  angleVals.Out[ROLL] = angleVals.Out[ROLL] * 0.9 + angleVals.Chan[ROLL] * 0.1;
 
-  angleVals.pitchAdjust = angleVals.pitchOut * 15;
-  angleVals.rollAdjust = angleVals.rollOut * 15;
+  angleVals.Adjust[PITCH] = angleVals.Out[PITCH] * 15;
+  angleVals.Adjust[ROLL] = angleVals.Out[ROLL] * 15;
 
   float uptake = 0.2;
   float oneMinusUptake = 1 - uptake;
 
-  pid.input.pitch = (pid.input.pitch * oneMinusUptake) + (gyroVal.x * uptake);
-  pid.gyro.roll = (pid.gyro.roll * oneMinusUptake) + (gyroVal.y * uptake);
-  pid.input.yaw = (pid.input.yaw * oneMinusUptake) + (gyroVal.z * uptake);
+  
 
-  pid.setpoint.roll = 0;
+  pid.input.chan[PITCH] = (pid.input.chan[PITCH] * oneMinusUptake) + (gyroVal.x * uptake);
+  pid.gyro.chan[ROLL] = (pid.gyro.chan[ROLL] * oneMinusUptake) + (gyroVal.y * uptake);
+  pid.input.chan[YAW] = (pid.input.chan[YAW] * oneMinusUptake) + (gyroVal.z * uptake);
+
+  pid.setpoint.chan[ROLL] = 0;
   if (inputVals.ch1 > (PWM_MID + 8))
-    pid.setpoint.roll = inputVals.ch1 - (PWM_MID + 8);
+    pid.setpoint.chan[ROLL] = inputVals.ch1 - (PWM_MID + 8);
   else if (inputVals.ch1 < (PWM_MID - 8))
-    pid.setpoint.roll = inputVals.ch1 - (PWM_MID - 8);
-  pid.setpoint.roll -= angleVals.rollAdjust;
-  pid.setpoint.roll /= 3.0;
+    pid.setpoint.chan[ROLL] = inputVals.ch1 - (PWM_MID - 8);
+  pid.setpoint.chan[ROLL] -= angleVals.Adjust[ROLL];
+  pid.setpoint.chan[ROLL] /= 3.0;
 
-  pid.setpoint.pitch = 0;
+  
+  pid.setpoint.chan[PITCH] = 0;
   if (inputVals.ch2 > (PWM_MID + 8))
-    pid.setpoint.pitch = inputVals.ch2 - (PWM_MID + 8);
+    pid.setpoint.chan[PITCH] = inputVals.ch2 - (PWM_MID + 8);
   else if (inputVals.ch2 < (PWM_MID - 8))
-    pid.setpoint.pitch = inputVals.ch2 - (PWM_MID - 8);
-  pid.setpoint.pitch -= angleVals.pitchAdjust;
-  pid.setpoint.pitch /= 3.0;
+    pid.setpoint.chan[PITCH] = inputVals.ch2 - (PWM_MID - 8);
+  pid.setpoint.chan[PITCH] -= angleVals.Adjust[PITCH];
+  pid.setpoint.chan[PITCH] /= 3.0;
 
-  pid.setpoint.yaw = 0;
+
+  pid.setpoint.chan[YAW] = 0;
   if (inputVals.ch3 > (PWM_MID + 8))
-    pid.setpoint.yaw = inputVals.ch3 - (PWM_MID + 8);
+    pid.setpoint.chan[YAW] = inputVals.ch3 - (PWM_MID + 8);
   else if (inputVals.ch3 < (PWM_MID - 8))
-    pid.setpoint.yaw = inputVals.ch3 - (PWM_MID - 8);
-  pid.setpoint.pitch /= 3.0;
+    pid.setpoint.chan[YAW] = inputVals.ch3 - (PWM_MID - 8);
+  pid.setpoint.chan[YAW] /= 3.0;
 
   calculate_pid();
 
@@ -185,18 +190,19 @@ void loop()
 #endif
 
   // a bit mixing
-  servoVals.ch1 = inputVals.ch1 + pid.output.roll;     // ROLL
-  servoVals.ch2 = inputVals.ch2 + pid.output.pitch;    // PITCH
+  
+  servoVals.ch1 = inputVals.ch1 + pid.output.chan[ROLL];     // ROLL
+  servoVals.ch2 = inputVals.ch2 + pid.output.chan[PITCH];    // PITCH
   servoVals.ch3 = (PWM_MID - servoVals.ch1) + PWM_MID; // INVERTED ROLL
-  servoVals.ch4 = inputVals.ch3 + pid.output.yaw;      // PITCH + YAW?
+  servoVals.ch4 = inputVals.ch3 + pid.output.chan[YAW];      // PITCH + YAW?
 
 //#ifdef unused
   serial_printF("pid roll: ");
-  serial_print(pid.output.roll);
+  serial_print(pid.output.chan[ROLL]);
   serial_printF(" pitch: ");
-  serial_print(pid.output.pitch);
+  serial_print(pid.output.chan[PITCH]);
   serial_printF(" error: ");
-  serial_println(pid.d_error.roll);
+  serial_println(pid.d_error.chan[ROLL]);
 //#endif
 
 
@@ -255,17 +261,19 @@ double mapf(double val, double in_min, double in_max, double out_min, double out
 
 
 /* TODO code is wrong! */
-void inline calculate(PIDStruct *pid, pidgainStruct *gain)
+void inline calculate(PIDStruct *pid, pidgainStruct *gain, int chan)
 {
   float temp_pid_error;
 
-  temp_pid_error = pid->input.pitch - pid->setpoint.pitch; // check error for pitch versus setpoint
-  pid->i_mem.pitch += gain->i * temp_pid_error; // integrate error for pitch over gain
-  pid->i_mem.pitch = constrain(pid->i_mem.pitch, -gain->max, gain->max); // constrain pitch integration in cage
 
-  pid->output.pitch = gain->p * temp_pid_error + pid->i_mem.pitch + gain->d * (temp_pid_error - pid->d_error.pitch); // calculate output pitch with knob, error, integration and gain by acutal error minus last error
-  pid->output.pitch = constrain(pid->output.pitch, -gain->max, gain->max); // keep pitch in cage
-  pid->d_error.pitch = temp_pid_error; // remember last error
+  temp_pid_error = pid->input.chan[chan] - pid->setpoint.chan[chan]; // check error for pitch versus setpoint
+
+  pid->i_mem.chan[chan] += gain->i * temp_pid_error; // integrate error for pitch over gain
+  pid->i_mem.chan[chan] = constrain(pid->i_mem.chan[PITCH], -gain->max, gain->max); // constrain pitch integration in cage
+
+  pid->output.chan[chan] = gain->p * temp_pid_error + pid->i_mem.chan[chan] + gain->d * (temp_pid_error - pid->d_error.chan[chan]); // calculate output pitch with knob, error, integration and gain by acutal error minus last error
+  pid->output.chan[chan] = constrain(pid->output.chan[chan], -gain->max, gain->max); // keep pitch in cage
+  pid->d_error.chan[chan] = temp_pid_error; // remember last error
 }
 
 /**
@@ -274,12 +282,11 @@ void inline calculate(PIDStruct *pid, pidgainStruct *gain)
 
 void calculate_pid()
 {
-#ifdef irrelevant
-  calculate(&pid, &gainpitch);
-  calculate(&pid, &gainroll);
-  calculate(&pid, &gainyaw);
-#endif // unused
+  calculate(&pid, &gainpitch, PITCH);
+  calculate(&pid, &gainroll, ROLL);
+  calculate(&pid, &gainyaw, YAW);
 
+#ifdef irrelevant
   float pid_error_temp;
 
   pid_error_temp = pid.input.pitch - pid.setpoint.pitch; // check error for pitch versus setpoint
@@ -307,6 +314,7 @@ void calculate_pid()
   pid.output.yaw = gainyaw.p * pid_error_temp + pid.i_mem.yaw + gainyaw.d * (pid_error_temp - pid.d_error.yaw); // calulate outputch yaw, with knob, error, integration, gain by current error minus last error
   pid.output.yaw = constrain(pid.output.yaw, -gainyaw.max, gainyaw.max); // keep output for yaw in cage
   pid.d_error.yaw = pid_error_temp; // remember last error for yaw
+#endif // unused
 
 }
 
