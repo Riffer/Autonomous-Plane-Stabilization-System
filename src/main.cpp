@@ -28,7 +28,7 @@ void setup_MPU();
 //void setup_PWM();
 void setup_SERVO();
 void cycle_CPPM();
-
+void setup_Wire();
 
 void setup()
 {
@@ -39,7 +39,7 @@ void setup()
   CPPM.begin();
   //setup_CPPM();
 
-  Wire.begin();
+  setup_Wire();
 
   setup_MPU();
 
@@ -105,6 +105,10 @@ void loop()
     return;
   }
 //#endif
+
+  gyroVal.x -= gyroCal.x;
+  gyroVal.y -= gyroCal.y;
+  gyroVal.z -= gyroCal.z;
 
   angleVals.pitch += gyroVal.x * 0.0000611;
   angleVals.roll += gyroVal.y * 0.0000611;
@@ -324,120 +328,18 @@ void setup_MPU()
 #endif  
 }
 
-
 void cycle_CPPM()
 {
-  //while(1)
+  CPPM.cycle(); // update some variables and check timeouts...
+
+  if (CPPM.synchronized())
   {
-    CPPM.cycle(); // update some variables and check timeouts...
-
-
-    if (CPPM.synchronized())
-    {
-      inputVals.ch1 = CPPM.read_us(0);
-      inputVals.ch2 = CPPM.read_us(1);
-      inputVals.ch3 = CPPM.read_us(2);
-      inputVals.ch4 = CPPM.read_us(3);
-
-#ifdef unused
-      int aile = CPPM.read_us(CPPM_AILE); // aile
-      int elev = CPPM.read_us(CPPM_ELEV); // elevator
-      int thro = CPPM.read_us(CPPM_THRO); // throttle
-      int rudd = CPPM.read_us(CPPM_RUDD); // rudder
-      int gear = CPPM.read_us(CPPM_GEAR); // gear
-      int aux1 = CPPM.read_us(CPPM_AUX1); // flap
-
-      Serial.print(aile);
-      Serial.print(", ");
-      Serial.print(elev);
-      Serial.print(", ");
-      Serial.print(thro);
-      Serial.print(", ");
-      Serial.print(rudd);
-      Serial.print(", ");
-      Serial.print(gear);
-      Serial.print(", ");
-      Serial.print(aux1);
-      Serial.print("\n");
-      Serial.flush();
-      delay(25);
-      #endif
-
-    }
-    //else
-    // Serial.println("no ccpm ");
-
-    //delay(300);
+    inputVals.ch1 = CPPM.read_us(0);
+    inputVals.ch2 = CPPM.read_us(1);
+    inputVals.ch3 = CPPM.read_us(2);
+    inputVals.ch4 = CPPM.read_us(3);
   }
 }
-
-  // can not be used on NANO, because only the first two PINs have an INPUT Interrupt!
-  #ifdef unused
-  void PWM_ISR()
-  {
-  static volatile timerISRStruct lastVals;
-
-  if (lastVals.ch1 == 0 && digitalRead(PIND2))
-  {
-  lastVals.ch1 = 1;
-  lastVals.timer1 = micros();
-  }
-  else if (lastVals.ch1 == 1 && !digitalRead(PIND2))
-  {
-  lastVals.ch1 = 0;
-  inputVals.ch1 = micros() - lastVals.timer1;
-  }
-
-  if (lastVals.ch2 == 0 && digitalRead(PIND3))
-  {
-  lastVals.ch2 = 1;
-  lastVals.timer2 = micros();
-  }
-  else if (lastVals.ch2 == 1 && !digitalRead(PIND3))
-  {
-  lastVals.ch2 = 0;
-  inputVals.ch2 = micros() - lastVals.timer2;
-  }
-
-  if (lastVals.ch3 == 0 && digitalRead(PIND6))
-  {
-  lastVals.ch3 = 1;
-  lastVals.timer3 = micros();
-  }
-  else if (lastVals.ch3 == 1 && !digitalRead(PIND6))
-  {
-  lastVals.ch3 = 0;
-  inputVals.ch3 = micros() - lastVals.timer3;
-  }
-
-  if (lastVals.ch4 == 0 && digitalRead(PIND7))
-  {
-  lastVals.ch4 = 1;
-  lastVals.timer4 = micros();
-  }
-  else if (lastVals.ch4 == 1 && !digitalRead(PIND7))
-  {
-  lastVals.ch4 = 0;
-  inputVals.ch4 = micros() - lastVals.timer4;
-  }
-}
-
-
-void setup_PWM()
-{
-  
-  pinMode(PIND2, INPUT_PULLUP);
-  pinMode(PIND3, INPUT_PULLUP);
-  pinMode(PIND4, INPUT_PULLUP);
-  pinMode(PIND5, INPUT_PULLUP);
-
-  attachInterrupt(digitalPinToInterrupt(PIND2), PWM_ISR, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(PIND3), PWM_ISR, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(PIND4), PWM_ISR, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(PIND5), PWM_ISR, CHANGE);
-}
-#endif
-
 
 void setup_Wire()
 {

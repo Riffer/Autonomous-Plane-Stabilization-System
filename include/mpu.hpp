@@ -143,9 +143,8 @@ bool mpu_read_data(gyroStruct *acc, gyroStruct *gyro) // reads the current acc a
 // setup MPU in a cascade
 bool mpu_setup()
 {
-    serial_printlnF("setting up registers of MPU6050");
+    serial_printlnF("setting up registers of: (");
 
-    serial_printF("mpu: ");
     uint8_t mputype = whoAmI();
     String mputype_string = "unknown";
 
@@ -161,9 +160,8 @@ bool mpu_setup()
         mputype_string = "MPU6500";
         break;
     }
-    serial_printF("mpu: ");
     serial_print(mputype);
-    serial_printF(" => ");
+    serial_printF("') => ");
     serial_println(mputype_string);
 
     serial_printF("powerregister: ");
