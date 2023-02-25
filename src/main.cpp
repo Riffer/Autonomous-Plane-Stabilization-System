@@ -193,14 +193,14 @@ void loop()
   servoVals.ch3 = (PWM_MID - servoVals.ch1) + PWM_MID; // INVERTED ROLL
   servoVals.ch4 = inputVals.ch3 + pid.output.chan[YAW];      // PITCH + YAW?
 
-//#ifdef unused
+#ifdef unused
   serial_printF("pid roll: ");
   serial_print(pid.output.chan[ROLL]);
   serial_printF(" pitch: ");
   serial_print(pid.output.chan[PITCH]);
   serial_printF(" error: ");
   serial_println(pid.d_error.chan[ROLL]);
-//#endif
+#endif
 
 
 
@@ -257,7 +257,7 @@ double mapf(double val, double in_min, double in_max, double out_min, double out
 }
 
 
-/* TODO code is wrong! */
+/* TODO check if code works */
 void inline calculate(PIDStruct *pid, pidgainStruct *gain, int chan)
 {
   float temp_pid_error;
