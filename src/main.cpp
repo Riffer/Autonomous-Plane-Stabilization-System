@@ -175,8 +175,55 @@ void loop()
 
   calculate_pid();
 
+
+  // a bit mixing
+  
+  servoVals.ch1 = inputVals.ch1 + pid.output.chan[ROLL];     // ROLL
+  servoVals.ch2 = inputVals.ch2 + pid.output.chan[PITCH];    // PITCH
+  servoVals.ch3 = (PWM_MID - servoVals.ch1) + PWM_MID; // INVERTED ROLL
+  servoVals.ch4 = inputVals.ch3 + pid.output.chan[YAW];      // PITCH + YAW?
+
+  serial_printF("angleVals.Chan[PITCH]: ");
+  serial_print(angleVals.Chan[PITCH]);
+  serial_printF(" angleVals.Chan[ROLL]: ");
+  serial_println(angleVals.Chan[ROLL]);
+
 #ifdef unused
-  serial_printF("RX roll: ");
+  serial_printF("gyroVal.x: ");
+  serial_print(gyroVal.x);
+  serial_printF(" gyroVal.y: ");
+  serial_print(gyroVal.y);
+  serial_printF(" gyroVal.z: ");
+  serial_println(gyroVal.z);
+#endif
+
+#ifdef unused
+      serial_printF("RX roll: ");
+  serial_print(servoVals.ch1);
+  serial_printF(" pitch: ");
+  serial_print(servoVals.ch2);
+  serial_printF(" inverted roll: ");
+  serial_print(servoVals.ch3);
+  serial_printF(" yaw: ");
+  serial_println(servoVals.ch4);
+#endif
+
+#ifdef unused
+  serial_printF("pid output ROLL: ");
+  serial_print(pid.output.chan[ROLL]);
+  serial_printF(" PITCH: ");
+  serial_println(pid.output.chan[PITCH]);
+#endif
+
+#ifdef unused
+  serial_printF("setpoint roll: ");
+  serial_print(pid.setpoint.chan[ROLL]);
+  serial_printF(" setpoint pitch: ");
+  serial_println(pid.setpoint.chan[PITCH]);
+#endif
+
+#ifdef unused
+      serial_printF("RX roll: ");
   serial_print(inputVals.ch1);
   serial_printF(" pitch: ");
   serial_print(inputVals.ch2);
@@ -186,13 +233,6 @@ void loop()
   serial_println(inputVals.ch4);
 #endif
 
-  // a bit mixing
-  
-  servoVals.ch1 = inputVals.ch1 + pid.output.chan[ROLL];     // ROLL
-  servoVals.ch2 = inputVals.ch2 + pid.output.chan[PITCH];    // PITCH
-  servoVals.ch3 = (PWM_MID - servoVals.ch1) + PWM_MID; // INVERTED ROLL
-  servoVals.ch4 = inputVals.ch3 + pid.output.chan[YAW];      // PITCH + YAW?
-
 #ifdef unused
   serial_printF("pid roll: ");
   serial_print(pid.output.chan[ROLL]);
@@ -201,7 +241,6 @@ void loop()
   serial_printF(" error: ");
   serial_println(pid.d_error.chan[ROLL]);
 #endif
-
 
 
   // wait until 0,4 miliseconds gone by (1000 micros are 1 milis, 1 second has 1.000.000 micros!)
@@ -266,7 +305,7 @@ void inline calculate(PIDStruct *pid, pidgainStruct *gain, int chan)
   temp_pid_error = pid->input.chan[chan] - pid->setpoint.chan[chan]; // check error for pitch versus setpoint
 
   pid->i_mem.chan[chan] += gain->i * temp_pid_error; // integrate error for pitch over gain
-  pid->i_mem.chan[chan] = constrain(pid->i_mem.chan[PITCH], -gain->max, gain->max); // constrain pitch integration in cage
+  pid->i_mem.chan[chan] = constrain(pid->i_mem.chan[chan], -gain->max, gain->max); // constrain pitch integration in cage
 
   pid->output.chan[chan] = gain->p * temp_pid_error + pid->i_mem.chan[chan] + gain->d * (temp_pid_error - pid->d_error.chan[chan]); // calculate output pitch with knob, error, integration and gain by acutal error minus last error
   pid->output.chan[chan] = constrain(pid->output.chan[chan], -gain->max, gain->max); // keep pitch in cage
@@ -403,8 +442,9 @@ void setup_SERVO()
 {
   serial_printlnF("setting DIGITAL PIN 4, 5, 6, 7 as OUTPUTS");
 
-  pinMode(4, OUTPUT);
-  pinMode(5, OUTPUT);
-  pinMode(6, OUTPUT);
-  pinMode(7, OUTPUT);
+  pinMode(4, OUTPUT); // ROLL
+  pinMode(5, OUTPUT); // PITCH
+  pinMode(6, OUTPUT); // INVERTED ROLL
+  pinMode(7, OUTPUT); // PITCH + YAW?
+
 }
