@@ -12,9 +12,7 @@
 #define MPU_ADDRESS 0x68
 
 enum {ROLL=0, PITCH=1, YAW=2, CHANNEL_MAX};
-
 enum {GVAL=0, GCAL=1, GACC=2, GYRO_MAX};
-
 
 struct pidgainStruct
 {
@@ -41,19 +39,6 @@ struct gyroStruct
   long totalVector = 0;
 };
 
-
-struct timerISRStruct
-{
-  byte ch1 = 0;             // Receiver Roll
-  unsigned long timer1;
-  byte ch2 = 0;             // Receiver Pitch
-  unsigned long timer2;
-  byte ch3 = 0;             // Receiver Yaw
-  unsigned long timer3;
-  byte ch4 = 0;             // Intensity Knob
-  unsigned long timer4;
-};
-
 struct angleValStruct
 {
   float chan;
@@ -61,7 +46,6 @@ struct angleValStruct
   float out;
   float adjust;
 };
-
 
 struct PIDStruct
 {

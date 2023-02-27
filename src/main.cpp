@@ -6,7 +6,7 @@
 
 
 gyroStruct gyro[GYRO_MAX];
-pidgainStruct gain[CHANNEL_MAX];
+pidgainStruct gains[CHANNEL_MAX];
 
 angleValStruct angleVals[CHANNEL_MAX];
 
@@ -14,7 +14,6 @@ volatile channelValStruct inputVals;
 channelValStruct servoVals;
 
 PIDStruct pid[CHANNEL_MAX];
-
 
 double mapf(double val, double in_min, double in_max, double out_min, double out_max);
 
@@ -46,24 +45,26 @@ void loop()
   static bool set_gyro_angles = false;
   static int loopCounter = 0;
   static unsigned long loop_start_time = 0;
-  static unsigned long interval = 100;
   static int onoff = HIGH;
 
   static unsigned long lastTime = millis(); // initialisiert die Variable, um die letzte Ausführungszeit zu speichern
 
   cycle_CPPM();
 
-  interval = map(inputVals.ch1, 700, 2300, 150, 50);
+
+#ifdef unused
+  // blink LED according to channel 1 
+  static unsigned long interval = 100;
+  interval = map(inputVals.ch1, 700, 2300, 150, 50); 
   interval = constrain(interval, 50, 150);
 
-
   if (millis() >= (lastTime + interval))
-  { // prüft, ob genug Zeit vergangen ist
+  { 
     digitalWrite(LED_BUILTIN, onoff);
     onoff = !onoff;
     lastTime = millis(); // speichert die letzte Ausführungszeit
   }
-
+ #endif
 
   // channel input 4 intensivity to zero if below PWM_MIN
   // channel input 4 intensivity mapped to value between 0.07 and 0.17
@@ -71,7 +72,7 @@ void loop()
   float pinten = inputVals.ch4 <= PWM_MIN?0:mapf(inputVals.ch4, PWM_MIN, (PWM_MAX + 50), 0.07, 0.17);
   
   // only one array iteration
-  for(pidgainStruct &g : gain)
+  for(pidgainStruct &g : gains)
   {
     g.d = g.p = pinten;
   }
@@ -297,9 +298,9 @@ void inline calculate(PIDStruct *pid, pidgainStruct *gain)
 
 void calculate_pid()
 {
-  calculate(&pid[PITCH], &gain[PITCH]);
-  calculate(&pid[ROLL], &gain[ROLL]);
-  calculate(&pid[YAW], &gain[YAW]);
+  calculate(&pid[PITCH], &gains[PITCH]);
+  calculate(&pid[ROLL], &gains[ROLL]);
+  calculate(&pid[YAW], &gains[YAW]);
 }
 
 void setup_MPU()
