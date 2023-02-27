@@ -56,10 +56,10 @@ struct timerISRStruct
 
 struct angleValStruct
 {
-  float Chan;
-  float Acc;
-  float Out;
-  float Adjust;
+  float chan;
+  float acc;
+  float out;
+  float adjust;
 };
 
 

@@ -87,37 +87,37 @@ void loop()
   gyro[GVAL].z -= gyro[GCAL].z;
 
 
-  angleVals[PITCH].Chan += gyro[GVAL].x * 0.0000611;
-  angleVals[ROLL].Chan += gyro[GVAL].y * 0.0000611;
+  angleVals[PITCH].chan += gyro[GVAL].x * 0.0000611;
+  angleVals[ROLL].chan += gyro[GVAL].y * 0.0000611;
 
-  angleVals[PITCH].Chan += angleVals[ROLL].Chan * sin(gyro[GVAL].z * 0.000001066);
-  angleVals[ROLL].Chan -= angleVals[PITCH].Chan * sin(gyro[GVAL].z * 0.000001066);
+  angleVals[PITCH].chan += angleVals[ROLL].chan * sin(gyro[GVAL].z * 0.000001066);
+  angleVals[ROLL].chan -= angleVals[PITCH].chan * sin(gyro[GVAL].z * 0.000001066);
 
   gyro[GACC].totalVector = sqrt((gyro[GACC].x * gyro[GACC].x) + (gyro[GACC].y * gyro[GACC].y) + (gyro[GACC].z * gyro[GACC].z));
-  angleVals[PITCH].Acc = asin((float)gyro[GACC].y / gyro[GACC].totalVector) * 57.296;
-  angleVals[ROLL].Acc = asin((float)gyro[GACC].x / gyro[GACC].totalVector) * -57.296;
+  angleVals[PITCH].acc = asin((float)gyro[GACC].y / gyro[GACC].totalVector) * 57.296;
+  angleVals[ROLL].acc = asin((float)gyro[GACC].x / gyro[GACC].totalVector) * -57.296;
 
-  angleVals[PITCH].Acc -= 0.0;
-  angleVals[ROLL].Acc -= 0.0;
+  angleVals[PITCH].acc -= 0.0;
+  angleVals[ROLL].acc -= 0.0;
 
   // TODO: check for neccesity
   if (set_gyro_angles)
   {
-    angleVals[PITCH].Chan = angleVals[PITCH].Chan * 0.9996 + angleVals[PITCH].Acc * 0.0004;
-    angleVals[ROLL].Chan = angleVals[ROLL].Chan * 0.9996 + angleVals[ROLL].Acc * 0.0004;
+    angleVals[PITCH].chan = angleVals[PITCH].chan * 0.9996 + angleVals[PITCH].acc * 0.0004;
+    angleVals[ROLL].chan = angleVals[ROLL].chan * 0.9996 + angleVals[ROLL].acc * 0.0004;
   }
   else
   {
-    angleVals[PITCH].Chan = angleVals[PITCH].Acc;
-    angleVals[ROLL].Chan = angleVals[ROLL].Acc;
+    angleVals[PITCH].chan = angleVals[PITCH].acc;
+    angleVals[ROLL].chan = angleVals[ROLL].acc;
     set_gyro_angles = true;
   }
 
-  angleVals[PITCH].Out = angleVals[PITCH].Out * 0.9 + angleVals[PITCH].Chan * 0.1;
-  angleVals[ROLL].Out = angleVals[ROLL].Out * 0.9 + angleVals[ROLL].Chan * 0.1;
+  angleVals[PITCH].out = angleVals[PITCH].out * 0.9 + angleVals[PITCH].chan * 0.1;
+  angleVals[ROLL].out = angleVals[ROLL].out * 0.9 + angleVals[ROLL].chan * 0.1;
 
-  angleVals[PITCH].Adjust = angleVals[PITCH].Out * 15;
-  angleVals[ROLL].Adjust = angleVals[ROLL].Out * 15;
+  angleVals[PITCH].adjust = angleVals[PITCH].out * 15;
+  angleVals[ROLL].adjust = angleVals[ROLL].out * 15;
 
   float uptake = 0.2;
   float oneMinusUptake = 1 - uptake;
@@ -133,7 +133,7 @@ void loop()
     pid.setpoint.chan[ROLL] = inputVals.ch1 - (PWM_MID + 8);
   else if (inputVals.ch1 < (PWM_MID - 8))
     pid.setpoint.chan[ROLL] = inputVals.ch1 - (PWM_MID - 8);
-  pid.setpoint.chan[ROLL] -= angleVals[ROLL].Adjust;
+  pid.setpoint.chan[ROLL] -= angleVals[ROLL].adjust;
   pid.setpoint.chan[ROLL] /= 3.0;
 
   
@@ -142,7 +142,7 @@ void loop()
     pid.setpoint.chan[PITCH] = inputVals.ch2 - (PWM_MID + 8);
   else if (inputVals.ch2 < (PWM_MID - 8))
     pid.setpoint.chan[PITCH] = inputVals.ch2 - (PWM_MID - 8);
-  pid.setpoint.chan[PITCH] -= angleVals[PITCH].Adjust;
+  pid.setpoint.chan[PITCH] -= angleVals[PITCH].adjust;
   pid.setpoint.chan[PITCH] /= 3.0;
 
 
@@ -164,9 +164,9 @@ void loop()
   servoVals.ch4 = inputVals.ch3 + pid.output.chan[YAW];      // PITCH + YAW?
 
   serial_printF("angleVals[PITCH].Chan: ");
-  serial_print(angleVals[PITCH].Chan);
+  serial_print(angleVals[PITCH].chan);
   serial_printF(" angleVals[ROLL].Chan: ");
-  serial_println(angleVals[ROLL].Chan);
+  serial_println(angleVals[ROLL].chan);
 
 #ifdef unused
   serial_printF("gyro[GVAL].x: ");
