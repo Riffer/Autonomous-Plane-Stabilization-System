@@ -15,6 +15,7 @@ enum {ROLL=0, PITCH=1, YAW=2, CHANNEL_MAX};
 
 enum {GVAL=0, GCAL=1, GACC=2, GYRO_MAX};
 
+
 struct pidgainStruct
 {
   float p = 0;
@@ -38,7 +39,6 @@ struct gyroStruct
   long y = 0;
   long z = 0;
   long totalVector = 0;
-  //bool set_gyro_angles;
 };
 
 
@@ -54,14 +54,15 @@ struct timerISRStruct
   unsigned long timer4;
 };
 
-
 struct angleValStruct
 {
-  float Chan[CHANNEL_MAX];
-  float Acc[CHANNEL_MAX];
-  float Out[CHANNEL_MAX];
-  float Adjust[CHANNEL_MAX];
+  float Chan;
+  float Acc;
+  float Out;
+  float Adjust;
 };
+
+
 
 struct RollPitchYawStruct
 {
