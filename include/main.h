@@ -13,6 +13,8 @@
 
 enum {ROLL=0, PITCH=1, YAW=2, CHANNEL_MAX};
 
+enum {GVAL=0, GCAL=1, GACC=2, GYRO_MAX};
+
 struct pidgainStruct
 {
   float p = 0;
@@ -23,11 +25,11 @@ struct pidgainStruct
 };
 
 struct channelValStruct 
-{              // INPUT: 
-  int ch1 = 0; // Receiver Roll
-  int ch2 = 0; // Receiver Pitch
-  int ch3 = 0; // Receiver Yaw
-  int ch4 = 0; // Intensity Knob
+{              // INPUT:              // OUTPUT:
+  int ch1 = 0; // Receiver Roll       // ROLL
+  int ch2 = 0; // Receiver Pitch      // PITCH
+  int ch3 = 0; // Receiver Yaw        // INVERTED ROLL
+  int ch4 = 0; // Intensity Knob      // YAW
 };
 
 struct gyroStruct
@@ -59,27 +61,11 @@ struct angleValStruct
   float Acc[CHANNEL_MAX];
   float Out[CHANNEL_MAX];
   float Adjust[CHANNEL_MAX];
-/*
-  float roll = 0;
-  float rollAcc = 0;
-  float rollOut = 0;
-  float rollAdjust = 0;
-
-  float pitch = 0;
-  float pitchAcc = 0;
-  float pitchOut = 0;
-  float pitchAdjust = 0;
-*/  
 };
 
 struct RollPitchYawStruct
 {
   float chan[CHANNEL_MAX];
-/*
-  float roll = 0;
-  float pitch = 0;
-  float yaw = 0;
-*/
 };
 
 struct PIDStruct
