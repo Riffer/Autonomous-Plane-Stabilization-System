@@ -63,7 +63,17 @@ struct angleValStruct
 };
 
 
+struct PIDStruct
+{
+  float i_mem;
+  float input;
+  float output;
+  float setpoint;
+  float d_error;
+  float gyro;
+};
 
+/*
 struct RollPitchYawStruct
 {
   float chan[CHANNEL_MAX];
@@ -78,6 +88,7 @@ struct PIDStruct
   RollPitchYawStruct d_error;
   RollPitchYawStruct gyro;
 };
+*/
 
 #define DEBUG 1 //0 for turn off, 1 for turn on - this works function wise and the compiler optimizes if(0){} out
 

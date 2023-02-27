@@ -13,7 +13,7 @@ angleValStruct angleVals[CHANNEL_MAX];
 volatile channelValStruct inputVals;
 channelValStruct servoVals;
 
-PIDStruct pid;
+PIDStruct pid[CHANNEL_MAX];
 
 
 double mapf(double val, double in_min, double in_max, double out_min, double out_max);
@@ -124,44 +124,44 @@ void loop()
 
   
 
-  pid.input.chan[PITCH] = (pid.input.chan[PITCH] * oneMinusUptake) + (gyro[GVAL].x * uptake);
-  pid.gyro.chan[ROLL] = (pid.gyro.chan[ROLL] * oneMinusUptake) + (gyro[GVAL].y * uptake);
-  pid.input.chan[YAW] = (pid.input.chan[YAW] * oneMinusUptake) + (gyro[GVAL].z * uptake);
+  pid[ROLL].input = (pid[ROLL].input * oneMinusUptake) + (gyro[GVAL].x * uptake);
+  pid[ROLL].gyro = (pid[ROLL].gyro * oneMinusUptake) + (gyro[GVAL].y * uptake);
+  pid[YAW].input = (pid[YAW].input * oneMinusUptake) + (gyro[GVAL].z * uptake);
 
-  pid.setpoint.chan[ROLL] = 0;
+  pid[ROLL].setpoint = 0;
   if (inputVals.ch1 > (PWM_MID + 8))
-    pid.setpoint.chan[ROLL] = inputVals.ch1 - (PWM_MID + 8);
+    pid[ROLL].setpoint = inputVals.ch1 - (PWM_MID + 8);
   else if (inputVals.ch1 < (PWM_MID - 8))
-    pid.setpoint.chan[ROLL] = inputVals.ch1 - (PWM_MID - 8);
-  pid.setpoint.chan[ROLL] -= angleVals[ROLL].adjust;
-  pid.setpoint.chan[ROLL] /= 3.0;
+    pid[ROLL].setpoint = inputVals.ch1 - (PWM_MID - 8);
+  pid[ROLL].setpoint -= angleVals[ROLL].adjust;
+  pid[ROLL].setpoint /= 3.0;
 
   
-  pid.setpoint.chan[PITCH] = 0;
+  pid[PITCH].setpoint = 0;
   if (inputVals.ch2 > (PWM_MID + 8))
-    pid.setpoint.chan[PITCH] = inputVals.ch2 - (PWM_MID + 8);
+    pid[PITCH].setpoint = inputVals.ch2 - (PWM_MID + 8);
   else if (inputVals.ch2 < (PWM_MID - 8))
-    pid.setpoint.chan[PITCH] = inputVals.ch2 - (PWM_MID - 8);
-  pid.setpoint.chan[PITCH] -= angleVals[PITCH].adjust;
-  pid.setpoint.chan[PITCH] /= 3.0;
+    pid[PITCH].setpoint = inputVals.ch2 - (PWM_MID - 8);
+  pid[PITCH].setpoint -= angleVals[PITCH].adjust;
+  pid[PITCH].setpoint /= 3.0;
 
 
-  pid.setpoint.chan[YAW] = 0;
+  pid[YAW].setpoint = 0;
   if (inputVals.ch3 > (PWM_MID + 8))
-    pid.setpoint.chan[YAW] = inputVals.ch3 - (PWM_MID + 8);
+    pid[YAW].setpoint = inputVals.ch3 - (PWM_MID + 8);
   else if (inputVals.ch3 < (PWM_MID - 8))
-    pid.setpoint.chan[YAW] = inputVals.ch3 - (PWM_MID - 8);
-  pid.setpoint.chan[YAW] /= 3.0;
+    pid[YAW].setpoint = inputVals.ch3 - (PWM_MID - 8);
+  pid[YAW].setpoint /= 3.0;
 
   calculate_pid();
 
 
   // a bit mixing
   
-  servoVals.ch1 = inputVals.ch1 + pid.output.chan[ROLL];     // ROLL
-  servoVals.ch2 = inputVals.ch2 + pid.output.chan[PITCH];    // PITCH
+  servoVals.ch1 = inputVals.ch1 + pid[ROLL].output;     // ROLL
+  servoVals.ch2 = inputVals.ch2 + pid[PITCH].output;    // PITCH
   servoVals.ch3 = (PWM_MID - servoVals.ch1) + PWM_MID; // INVERTED ROLL
-  servoVals.ch4 = inputVals.ch3 + pid.output.chan[YAW];      // PITCH + YAW?
+  servoVals.ch4 = inputVals.ch3 + pid[YAW].output;      // PITCH + YAW?
 
   serial_printF("angleVals[PITCH].Chan: ");
   serial_print(angleVals[PITCH].chan);
@@ -190,16 +190,16 @@ void loop()
 
 #ifdef unused
   serial_printF("pid output ROLL: ");
-  serial_print(pid.output.chan[ROLL]);
+  serial_print(pid[ROLL].output);
   serial_printF(" PITCH: ");
-  serial_println(pid.output.chan[PITCH]);
+  serial_println(pid[PITCH].output);
 #endif
 
 #ifdef unused
   serial_printF("setpoint roll: ");
-  serial_print(pid.setpoint.chan[ROLL]);
+  serial_print(pid[ROLL].setpoint);
   serial_printF(" setpoint pitch: ");
-  serial_println(pid.setpoint.chan[PITCH]);
+  serial_println(pid[PITCH].setpoint);
 #endif
 
 #ifdef unused
@@ -215,9 +215,9 @@ void loop()
 
 #ifdef unused
   serial_printF("pid roll: ");
-  serial_print(pid.output.chan[ROLL]);
+  serial_print(pid[ROLL].output);
   serial_printF(" pitch: ");
-  serial_print(pid.output.chan[PITCH]);
+  serial_print(pid[PITCH].output);
   serial_printF(" error: ");
   serial_println(pid.d_error.chan[ROLL]);
 #endif
@@ -277,19 +277,18 @@ double mapf(double val, double in_min, double in_max, double out_min, double out
 
 
 /* TODO check if code works */
-void inline calculate(PIDStruct *pid, pidgainStruct *gain, int chan)
+void inline calculate(PIDStruct *pid, pidgainStruct *gain)
 {
   float temp_pid_error;
 
+  temp_pid_error = pid->input - pid->setpoint; // check error for pitch versus setpoint
 
-  temp_pid_error = pid->input.chan[chan] - pid->setpoint.chan[chan]; // check error for pitch versus setpoint
+  pid->i_mem += gain->i * temp_pid_error; // integrate error for pitch over gain
+  pid->i_mem = constrain(pid->i_mem, -gain->max, gain->max); // constrain pitch integration in cage
 
-  pid->i_mem.chan[chan] += gain->i * temp_pid_error; // integrate error for pitch over gain
-  pid->i_mem.chan[chan] = constrain(pid->i_mem.chan[chan], -gain->max, gain->max); // constrain pitch integration in cage
-
-  pid->output.chan[chan] = gain->p * temp_pid_error + pid->i_mem.chan[chan] + gain->d * (temp_pid_error - pid->d_error.chan[chan]); // calculate output pitch with knob, error, integration and gain by acutal error minus last error
-  pid->output.chan[chan] = constrain(pid->output.chan[chan], -gain->max, gain->max); // keep pitch in cage
-  pid->d_error.chan[chan] = temp_pid_error; // remember last error
+  pid->output = gain->p * temp_pid_error + pid->i_mem + gain->d * (temp_pid_error - pid->d_error); // calculate output pitch with knob, error, integration and gain by acutal error minus last error
+  pid->output = constrain(pid->output, -gain->max, gain->max); // keep pitch in cage
+  pid->d_error = temp_pid_error; // remember last error
 }
 
 /**
@@ -298,40 +297,9 @@ void inline calculate(PIDStruct *pid, pidgainStruct *gain, int chan)
 
 void calculate_pid()
 {
-  calculate(&pid, &gain[PITCH], PITCH);
-  calculate(&pid, &gain[ROLL], ROLL);
-  calculate(&pid, &gain[YAW], YAW);
-
-#ifdef irrelevant
-  float pid_error_temp;
-
-  pid_error_temp = pid.input.pitch - pid.setpoint.pitch; // check error for pitch versus setpoint
-  pid.i_mem.pitch += gain[PITCH].i * pid_error_temp; // integrate error for pitch over gain
-  pid.i_mem.pitch = constrain(pid.i_mem.pitch, -gain[PITCH].max, gain[PITCH].max); // constrain pitch integration in cage
-
-  pid.output.pitch = gain[PITCH].p * pid_error_temp + pid.i_mem.pitch + gain[PITCH].d * (pid_error_temp - pid.d_error.pitch); // calculate output pitch with knob, error, integration and gain by acutal error minus last error
-  pid.output.pitch = constrain(pid.output.pitch, -gain[PITCH].max, gain[PITCH].max); // keep pitch in cage
-  pid.d_error.pitch = pid_error_temp; // remember last error for pitch
-
-
-  pid_error_temp = pid.gyro.roll - pid.setpoint.roll; // check error versus setpoint
-  pid.i_mem.roll += gain[ROLL].i * pid_error_temp; // integrate error for roll over gain
-  pid.i_mem.roll = constrain(pid.i_mem.roll, -gain[ROLL].max, gain[ROLL].max); // keep roll in cage
-
-  pid.output.roll = gain[ROLL].p * pid_error_temp + pid.i_mem.roll + gain[ROLL].d * (pid_error_temp - pid.d_error.roll); // calulate output roll, with knob, error, integration, gain by current error minus last error
-  pid.output.roll = constrain(pid.output.roll, -gain[ROLL].max, gain[ROLL].max); // keep roll output in cage
-  pid.d_error.roll = pid_error_temp; // remember last error for roll
-
-
-  pid_error_temp = pid.input.yaw - pid.setpoint.yaw;  // check error versus setpoint
-  pid.i_mem.yaw += gain[YAW].i * pid_error_temp; // integrate error for yaw over gain;
-  pid.i_mem.yaw = constrain(pid.i_mem.yaw, -gain[YAW].max_i, gain[YAW].max_i); // keep yaw output in cage
-
-  pid.output.yaw = gain[YAW].p * pid_error_temp + pid.i_mem.yaw + gain[YAW].d * (pid_error_temp - pid.d_error.yaw); // calulate outputch yaw, with knob, error, integration, gain by current error minus last error
-  pid.output.yaw = constrain(pid.output.yaw, -gain[YAW].max, gain[YAW].max); // keep output for yaw in cage
-  pid.d_error.yaw = pid_error_temp; // remember last error for yaw
-#endif // unused
-
+  calculate(&pid[PITCH], &gain[PITCH]);
+  calculate(&pid[ROLL], &gain[ROLL]);
+  calculate(&pid[YAW], &gain[YAW]);
 }
 
 void setup_MPU()
