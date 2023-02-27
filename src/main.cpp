@@ -67,34 +67,21 @@ void loop()
 
 
   // channel input 4 intensivity to zero if below PWM_MIN
-  if (inputVals.ch4 <= PWM_MIN)
+  // channel input 4 intensivity mapped to value between 0.07 and 0.17
+  // onliner
+  pinten = inputVals.ch4 <= PWM_MIN?0:mapf(inputVals.ch4, PWM_MIN, (PWM_MAX + 50), 0.07, 0.17);
+  
+  // only one array iteration
+  for(pidgainStruct &g : gain)
   {
-    gain[ROLL].d = 0;
-    gain[ROLL].p = 0;
-    gain[PITCH].d = 0;
-    gain[PITCH].p = 0;
-    gain[YAW].p = 0;
-    gain[YAW].d = 0;
-  }
-  else
-  {
-    // channel input 4 intensivity mapped to value between 0.07 and 0.17
-    pinten = mapf(inputVals.ch4, PWM_MIN, (PWM_MAX + 50), 0.07, 0.17);
-    gain[ROLL].d = pinten;
-    gain[ROLL].p = pinten;
-    gain[PITCH].d = pinten;
-    gain[PITCH].p = pinten;
-    gain[YAW].p = pinten;
-    gain[YAW].d = pinten;
+    g.d = g.p = 0;
   }
 
-//#ifdef unused
   if (!mpu_read_data(&gyro[GACC], &gyro[GVAL]))
   {
     delay(1000);
     return;
   }
-//#endif
 
   gyro[GVAL].x -= gyro[GCAL].x;
   gyro[GVAL].y -= gyro[GCAL].y;
