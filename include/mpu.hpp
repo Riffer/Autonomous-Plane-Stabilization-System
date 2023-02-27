@@ -124,7 +124,7 @@ bool mpu_read_data(gyroStruct *acc, gyroStruct *gyro) // reads the current acc a
     while (Wire.available() < 14){}; // wait until buffer has 14 bytes
 
     // read 8 bit pairs while shifting first byte to left, building into a full 16 bit (long integer)
-    acc->x = (int16_t)Wire.read() << 8 | Wire.read(); //0x3B
+    acc->x = (int16_t)Wire.read() << 8 | Wire.read(); //0x3B -- register to read from (in pairs)
     acc->y = (int16_t)Wire.read() << 8 | Wire.read(); //0x3D
     acc->z = (int16_t)Wire.read() << 8 | Wire.read(); //0x3F
     acc->x *= -1; // invert value
