@@ -9,10 +9,8 @@ gyroStruct gyroVal;
 gyroStruct gyroCal;
 gyroStruct gyroAcc;
 
-//TODO: Make an array of 3!
-pidgainStruct gainroll;
-pidgainStruct gainpitch;
-pidgainStruct gainyaw;
+
+pidgainStruct gain[CHANNEL_MAX];
 
 angleValStruct angleVals;
 
@@ -26,7 +24,6 @@ double mapf(double val, double in_min, double in_max, double out_min, double out
 
 void calculate_pid();
 void setup_MPU();
-//void setup_PWM();
 void setup_SERVO();
 void cycle_CPPM();
 void setup_Wire();
@@ -76,23 +73,23 @@ void loop()
   // channel input 4 intensivity to zero if below PWM_MIN
   if (inputVals.ch4 <= PWM_MIN)
   {
-    gainroll.d = 0;
-    gainroll.p = 0;
-    gainpitch.d = 0;
-    gainpitch.p = 0;
-    gainyaw.p = 0;
-    gainyaw.d = 0;
+    gain[ROLL].d = 0;
+    gain[ROLL].p = 0;
+    gain[PITCH].d = 0;
+    gain[PITCH].p = 0;
+    gain[YAW].p = 0;
+    gain[YAW].d = 0;
   }
   else
   {
     // channel input 4 intensivity mapped to value between 0.07 and 0.17
     pinten = mapf(inputVals.ch4, PWM_MIN, (PWM_MAX + 50), 0.07, 0.17);
-    gainroll.d = pinten;
-    gainroll.p = pinten;
-    gainpitch.d = pinten;
-    gainpitch.p = pinten;
-    gainyaw.p = pinten;
-    gainyaw.d = pinten;
+    gain[ROLL].d = pinten;
+    gain[ROLL].p = pinten;
+    gain[PITCH].d = pinten;
+    gain[PITCH].p = pinten;
+    gain[YAW].p = pinten;
+    gain[YAW].d = pinten;
   }
 
 //#ifdef unused
@@ -318,37 +315,37 @@ void inline calculate(PIDStruct *pid, pidgainStruct *gain, int chan)
 
 void calculate_pid()
 {
-  calculate(&pid, &gainpitch, PITCH);
-  calculate(&pid, &gainroll, ROLL);
-  calculate(&pid, &gainyaw, YAW);
+  calculate(&pid, &gain[PITCH], PITCH);
+  calculate(&pid, &gain[ROLL], ROLL);
+  calculate(&pid, &gain[YAW], YAW);
 
 #ifdef irrelevant
   float pid_error_temp;
 
   pid_error_temp = pid.input.pitch - pid.setpoint.pitch; // check error for pitch versus setpoint
-  pid.i_mem.pitch += gainpitch.i * pid_error_temp; // integrate error for pitch over gain
-  pid.i_mem.pitch = constrain(pid.i_mem.pitch, -gainpitch.max, gainpitch.max); // constrain pitch integration in cage
+  pid.i_mem.pitch += gain[PITCH].i * pid_error_temp; // integrate error for pitch over gain
+  pid.i_mem.pitch = constrain(pid.i_mem.pitch, -gain[PITCH].max, gain[PITCH].max); // constrain pitch integration in cage
 
-  pid.output.pitch = gainpitch.p * pid_error_temp + pid.i_mem.pitch + gainpitch.d * (pid_error_temp - pid.d_error.pitch); // calculate output pitch with knob, error, integration and gain by acutal error minus last error
-  pid.output.pitch = constrain(pid.output.pitch, -gainpitch.max, gainpitch.max); // keep pitch in cage
+  pid.output.pitch = gain[PITCH].p * pid_error_temp + pid.i_mem.pitch + gain[PITCH].d * (pid_error_temp - pid.d_error.pitch); // calculate output pitch with knob, error, integration and gain by acutal error minus last error
+  pid.output.pitch = constrain(pid.output.pitch, -gain[PITCH].max, gain[PITCH].max); // keep pitch in cage
   pid.d_error.pitch = pid_error_temp; // remember last error for pitch
 
 
   pid_error_temp = pid.gyro.roll - pid.setpoint.roll; // check error versus setpoint
-  pid.i_mem.roll += gainroll.i * pid_error_temp; // integrate error for roll over gain
-  pid.i_mem.roll = constrain(pid.i_mem.roll, -gainroll.max, gainroll.max); // keep roll in cage
+  pid.i_mem.roll += gain[ROLL].i * pid_error_temp; // integrate error for roll over gain
+  pid.i_mem.roll = constrain(pid.i_mem.roll, -gain[ROLL].max, gain[ROLL].max); // keep roll in cage
 
-  pid.output.roll = gainroll.p * pid_error_temp + pid.i_mem.roll + gainroll.d * (pid_error_temp - pid.d_error.roll); // calulate output roll, with knob, error, integration, gain by current error minus last error
-  pid.output.roll = constrain(pid.output.roll, -gainroll.max, gainroll.max); // keep roll output in cage
+  pid.output.roll = gain[ROLL].p * pid_error_temp + pid.i_mem.roll + gain[ROLL].d * (pid_error_temp - pid.d_error.roll); // calulate output roll, with knob, error, integration, gain by current error minus last error
+  pid.output.roll = constrain(pid.output.roll, -gain[ROLL].max, gain[ROLL].max); // keep roll output in cage
   pid.d_error.roll = pid_error_temp; // remember last error for roll
 
 
   pid_error_temp = pid.input.yaw - pid.setpoint.yaw;  // check error versus setpoint
-  pid.i_mem.yaw += gainyaw.i * pid_error_temp; // integrate error for yaw over gain;
-  pid.i_mem.yaw = constrain(pid.i_mem.yaw, -gainyaw.max_i, gainyaw.max_i); // keep yaw output in cage
+  pid.i_mem.yaw += gain[YAW].i * pid_error_temp; // integrate error for yaw over gain;
+  pid.i_mem.yaw = constrain(pid.i_mem.yaw, -gain[YAW].max_i, gain[YAW].max_i); // keep yaw output in cage
 
-  pid.output.yaw = gainyaw.p * pid_error_temp + pid.i_mem.yaw + gainyaw.d * (pid_error_temp - pid.d_error.yaw); // calulate outputch yaw, with knob, error, integration, gain by current error minus last error
-  pid.output.yaw = constrain(pid.output.yaw, -gainyaw.max, gainyaw.max); // keep output for yaw in cage
+  pid.output.yaw = gain[YAW].p * pid_error_temp + pid.i_mem.yaw + gain[YAW].d * (pid_error_temp - pid.d_error.yaw); // calulate outputch yaw, with knob, error, integration, gain by current error minus last error
+  pid.output.yaw = constrain(pid.output.yaw, -gain[YAW].max, gain[YAW].max); // keep output for yaw in cage
   pid.d_error.yaw = pid_error_temp; // remember last error for yaw
 #endif // unused
 
