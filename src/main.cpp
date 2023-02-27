@@ -5,17 +5,14 @@
 #include <jm_CPPM.h>
 
 
-gyroStruct gyro[GYRO_MAX];
+gyroStruct gyros[GYRO_MAX];
 pidgainStruct gains[CHANNEL_MAX];
-
-angleValStruct angleVals[CHANNEL_MAX];
+angleValStruct angles[CHANNEL_MAX];
 
 volatile channelValStruct inputVals;
 channelValStruct servoVals;
 
-PIDStruct pid[CHANNEL_MAX];
-
-double mapf(double val, double in_min, double in_max, double out_min, double out_max);
+PIDStruct PIDs[CHANNEL_MAX];
 
 void calculate_pid();
 void setup_MPU();
@@ -45,14 +42,12 @@ void loop()
   static bool set_gyro_angles = false;
   static int loopCounter = 0;
   static unsigned long loop_start_time = 0;
-  static int onoff = HIGH;
-
-  static unsigned long lastTime = millis(); // initialisiert die Variable, um die letzte Ausführungszeit zu speichern
 
   cycle_CPPM();
 
-
 #ifdef unused
+  static unsigned long lastTime = millis(); // initialisiert die Variable, um die letzte Ausführungszeit zu speichern
+  static int onoff = HIGH;
   // blink LED according to channel 1 
   static unsigned long interval = 100;
   interval = map(inputVals.ch1, 700, 2300, 150, 50); 
@@ -77,105 +72,120 @@ void loop()
     g.d = g.p = pinten;
   }
 
-  if (!mpu_read_data(&gyro[GACC], &gyro[GVAL]))
+  if (!mpu_read_data(&gyros[ACC], &gyros[VAL]))
   {
     delay(1000);
     return;
   }
 
-  gyro[GVAL].x -= gyro[GCAL].x;
-  gyro[GVAL].y -= gyro[GCAL].y;
-  gyro[GVAL].z -= gyro[GCAL].z;
+  gyros[VAL].x -= gyros[CAL].x;
+  gyros[VAL].y -= gyros[CAL].y;
+  gyros[VAL].z -= gyros[CAL].z;
 
 
-  angleVals[PITCH].chan += gyro[GVAL].x * 0.0000611;
-  angleVals[ROLL].chan += gyro[GVAL].y * 0.0000611;
+  //Gyro angle calculations . Note 0.0000611 = 1 / (250Hz x 65.5)
+  angles[PITCH].chan += gyros[VAL].x * 0.0000611;
+  angles[ROLL].chan += gyros[VAL].y * 0.0000611;
 
-  angleVals[PITCH].chan += angleVals[ROLL].chan * sin(gyro[GVAL].z * 0.000001066);
-  angleVals[ROLL].chan -= angleVals[PITCH].chan * sin(gyro[GVAL].z * 0.000001066);
+  //0.000001066 = 0.0000611 * (3.142(PI) / 180degr) The Arduino sin function is in radians
+  angles[PITCH].chan += angles[ROLL].chan * sin(gyros[VAL].z * 0.000001066);
+  angles[ROLL].chan -= angles[PITCH].chan * sin(gyros[VAL].z * 0.000001066);
 
-  gyro[GACC].totalVector = sqrt((gyro[GACC].x * gyro[GACC].x) + (gyro[GACC].y * gyro[GACC].y) + (gyro[GACC].z * gyro[GACC].z));
-  angleVals[PITCH].acc = asin((float)gyro[GACC].y / gyro[GACC].totalVector) * 57.296;
-  angleVals[ROLL].acc = asin((float)gyro[GACC].x / gyro[GACC].totalVector) * -57.296;
+  gyros[ACC].totalVector = sqrt((gyros[ACC].x * gyros[ACC].x) + (gyros[ACC].y * gyros[ACC].y) + (gyros[ACC].z * gyros[ACC].z));
+  angles[PITCH].acc = asin((float)gyros[ACC].y / gyros[ACC].totalVector) * 57.296;
+  angles[ROLL].acc = asin((float)gyros[ACC].x / gyros[ACC].totalVector) * -57.296;
 
-  angleVals[PITCH].acc -= 0.0;
-  angleVals[ROLL].acc -= 0.0;
+  angles[PITCH].acc -= 0.0;
+  angles[ROLL].acc -= 0.0;
 
   // TODO: check for neccesity
   if (set_gyro_angles)
   {
-    angleVals[PITCH].chan = angleVals[PITCH].chan * 0.9996 + angleVals[PITCH].acc * 0.0004;
-    angleVals[ROLL].chan = angleVals[ROLL].chan * 0.9996 + angleVals[ROLL].acc * 0.0004;
+    angles[PITCH].chan = angles[PITCH].chan * 0.9996 + angles[PITCH].acc * 0.0004;
+    angles[ROLL].chan = angles[ROLL].chan * 0.9996 + angles[ROLL].acc * 0.0004;
   }
   else
   {
-    angleVals[PITCH].chan = angleVals[PITCH].acc;
-    angleVals[ROLL].chan = angleVals[ROLL].acc;
+    angles[PITCH].chan = angles[PITCH].acc;
+    angles[ROLL].chan = angles[ROLL].acc;
     set_gyro_angles = true;
   }
 
-  angleVals[PITCH].out = angleVals[PITCH].out * 0.9 + angleVals[PITCH].chan * 0.1;
-  angleVals[ROLL].out = angleVals[ROLL].out * 0.9 + angleVals[ROLL].chan * 0.1;
+  /**
+   * To dampen the pitch and roll angles a complementary filter is used
+   **/
+  
+  //take 90% of the output pitch value and add 10% of the raw pitch value
+  angles[PITCH].out = angles[PITCH].out * 0.9 + angles[PITCH].chan * 0.1;
+  //take 90% of the output roll value and add 10% of the raw roll value
+  angles[ROLL].out = angles[ROLL].out * 0.9 + angles[ROLL].chan * 0.1;
 
-  angleVals[PITCH].adjust = angleVals[PITCH].out * 15;
-  angleVals[ROLL].adjust = angleVals[ROLL].out * 15;
+  angles[PITCH].adjust = angles[PITCH].out * 15;
+  angles[ROLL].adjust = angles[ROLL].out * 15;
 
   float uptake = 0.2;
   float oneMinusUptake = 1 - uptake;
 
   
 
-  pid[ROLL].input = (pid[ROLL].input * oneMinusUptake) + (gyro[GVAL].x * uptake);
-  pid[ROLL].gyro = (pid[ROLL].gyro * oneMinusUptake) + (gyro[GVAL].y * uptake);
-  pid[YAW].input = (pid[YAW].input * oneMinusUptake) + (gyro[GVAL].z * uptake);
+  PIDs[ROLL].input = (PIDs[ROLL].input * oneMinusUptake) + (gyros[VAL].x * uptake);
+  PIDs[ROLL].gyro = (PIDs[ROLL].gyro * oneMinusUptake) + (gyros[VAL].y * uptake);
+  PIDs[YAW].input = (PIDs[YAW].input * oneMinusUptake) + (gyros[VAL].z * uptake);
 
-  pid[ROLL].setpoint = 0;
+  PIDs[ROLL].setpoint = 0;
   if (inputVals.ch1 > (PWM_MID + 8))
-    pid[ROLL].setpoint = inputVals.ch1 - (PWM_MID + 8);
+    PIDs[ROLL].setpoint = inputVals.ch1 - (PWM_MID + 8);
   else if (inputVals.ch1 < (PWM_MID - 8))
-    pid[ROLL].setpoint = inputVals.ch1 - (PWM_MID - 8);
-  pid[ROLL].setpoint -= angleVals[ROLL].adjust;
-  pid[ROLL].setpoint /= 3.0;
+    PIDs[ROLL].setpoint = inputVals.ch1 - (PWM_MID - 8);
+  PIDs[ROLL].setpoint -= angles[ROLL].adjust;
+  PIDs[ROLL].setpoint /= 3.0;
 
   
-  pid[PITCH].setpoint = 0;
+  PIDs[PITCH].setpoint = 0;
   if (inputVals.ch2 > (PWM_MID + 8))
-    pid[PITCH].setpoint = inputVals.ch2 - (PWM_MID + 8);
+    PIDs[PITCH].setpoint = inputVals.ch2 - (PWM_MID + 8);
   else if (inputVals.ch2 < (PWM_MID - 8))
-    pid[PITCH].setpoint = inputVals.ch2 - (PWM_MID - 8);
-  pid[PITCH].setpoint -= angleVals[PITCH].adjust;
-  pid[PITCH].setpoint /= 3.0;
+    PIDs[PITCH].setpoint = inputVals.ch2 - (PWM_MID - 8);
+  PIDs[PITCH].setpoint -= angles[PITCH].adjust;
+  PIDs[PITCH].setpoint /= 3.0;
 
 
-  pid[YAW].setpoint = 0;
+  PIDs[YAW].setpoint = 0;
   if (inputVals.ch3 > (PWM_MID + 8))
-    pid[YAW].setpoint = inputVals.ch3 - (PWM_MID + 8);
+    PIDs[YAW].setpoint = inputVals.ch3 - (PWM_MID + 8);
   else if (inputVals.ch3 < (PWM_MID - 8))
-    pid[YAW].setpoint = inputVals.ch3 - (PWM_MID - 8);
-  pid[YAW].setpoint /= 3.0;
+    PIDs[YAW].setpoint = inputVals.ch3 - (PWM_MID - 8);
+  PIDs[YAW].setpoint /= 3.0;
 
   calculate_pid();
 
 
   // a bit mixing
-  
-  servoVals.ch1 = inputVals.ch1 + pid[ROLL].output;     // ROLL
-  servoVals.ch2 = inputVals.ch2 + pid[PITCH].output;    // PITCH
+  servoVals.ch1 = inputVals.ch1 + PIDs[ROLL].output;     // ROLL input plus calculated PID-roll
+  servoVals.ch2 = inputVals.ch2 + PIDs[PITCH].output;    // PITCH  input plus calculated PID-pitch
   servoVals.ch3 = (PWM_MID - servoVals.ch1) + PWM_MID; // INVERTED ROLL
-  servoVals.ch4 = inputVals.ch3 + pid[YAW].output;      // PITCH + YAW?
-
-  serial_printF("angleVals[PITCH].Chan: ");
-  serial_print(angleVals[PITCH].chan);
-  serial_printF(" angleVals[ROLL].Chan: ");
-  serial_println(angleVals[ROLL].chan);
+  servoVals.ch4 = inputVals.ch3 + PIDs[YAW].output;      // YAW-input plus calculated PID-yaw
 
 #ifdef unused
-  serial_printF("gyro[GVAL].x: ");
-  serial_print(gyro[GVAL].x);
-  serial_printF(" gyro[GVAL].y: ");
-  serial_print(gyro[GVAL].y);
-  serial_printF(" gyro[GVAL].z: ");
-  serial_println(gyro[GVAL].z);
+  serial_printF("angles[PITCH].Chan: ");
+  serial_print(angles[PITCH].chan);
+  serial_printF(" angles[ROLL].Chan: ");
+  serial_println(angles[ROLL].chan);
+#endif
+
+  serial_printF("angle pitch: ");
+  serial_print(angles[PITCH].out);
+  serial_printF(" roll: ");
+  serial_println(angles[ROLL].out);
+
+
+#ifdef unused
+  serial_printF("gyro[VAL].x: ");
+  serial_print(gyro[VAL].x);
+  serial_printF(" gyro[VAL].y: ");
+  serial_print(gyro[VAL].y);
+  serial_printF(" gyro[VAL].z: ");
+  serial_println(gyro[VAL].z);
 #endif
 
 #ifdef unused
@@ -190,17 +200,17 @@ void loop()
 #endif
 
 #ifdef unused
-  serial_printF("pid output ROLL: ");
-  serial_print(pid[ROLL].output);
+  serial_printF("PIDs output ROLL: ");
+  serial_print(PIDs[ROLL].output);
   serial_printF(" PITCH: ");
-  serial_println(pid[PITCH].output);
+  serial_println(PIDs[PITCH].output);
 #endif
 
 #ifdef unused
   serial_printF("setpoint roll: ");
-  serial_print(pid[ROLL].setpoint);
+  serial_print(PIDs[ROLL].setpoint);
   serial_printF(" setpoint pitch: ");
-  serial_println(pid[PITCH].setpoint);
+  serial_println(PIDs[PITCH].setpoint);
 #endif
 
 #ifdef unused
@@ -215,16 +225,16 @@ void loop()
 #endif
 
 #ifdef unused
-  serial_printF("pid roll: ");
-  serial_print(pid[ROLL].output);
+  serial_printF("PIDs roll: ");
+  serial_print(PIDs[ROLL].output);
   serial_printF(" pitch: ");
-  serial_print(pid[PITCH].output);
+  serial_print(PIDs[PITCH].output);
   serial_printF(" error: ");
-  serial_println(pid.d_error.chan[ROLL]);
+  serial_println(PIDs.d_error.chan[ROLL]);
 #endif
 
 
-  // wait until 0,4 miliseconds gone by (1000 micros are 1 milis, 1 second has 1.000.000 micros!)
+  // wait until at least 0,4 miliseconds gone by (1000 micros are 1 milis, 1 second has 1.000.000 micros!) since last time
   while (micros() - loop_start_time < 4000)
     ;
 loop_start_time = micros();
@@ -271,12 +281,6 @@ if (loopCounter >= 0)
   }
 }
 
-double mapf(double val, double in_min, double in_max, double out_min, double out_max)
-{
-  return (val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
-
 /* TODO check if code works */
 void inline calculate(PIDStruct *pid, pidgainStruct *gain)
 {
@@ -298,9 +302,9 @@ void inline calculate(PIDStruct *pid, pidgainStruct *gain)
 
 void calculate_pid()
 {
-  calculate(&pid[PITCH], &gains[PITCH]);
-  calculate(&pid[ROLL], &gains[ROLL]);
-  calculate(&pid[YAW], &gains[YAW]);
+  calculate(&PIDs[ROLL], &gains[ROLL]);
+  calculate(&PIDs[PITCH], &gains[PITCH]);
+  calculate(&PIDs[YAW], &gains[YAW]);
 }
 
 void setup_MPU()
@@ -321,11 +325,11 @@ void setup_MPU()
 #ifdef unused
   serial_printlnF("calculated Offsets are");
   serial_printF("pitch offset: ");
-  serial_println(gyro[GCAL].x);
+  serial_println(gyro[CAL].x);
   serial_printF("roll offset: ");
-  serial_println(gyro[GCAL].y);
+  serial_println(gyro[CAL].y);
   serial_printF("yaw offset: ");
-  serial_println(gyro[GCAL].z);
+  serial_println(gyro[CAL].z);
 
   for (;;)
   {
@@ -345,14 +349,23 @@ void setup_MPU()
 
 void cycle_CPPM()
 {
-  CPPM.cycle(); // update some variables and check timeouts...
+  CPPM.cycle(); // update some variables and check for timeouts...
 
-  if (CPPM.synchronized())
+  if (CPPM.synchronized()) // only in sync at specific timespans (TODO: more buffer?)
   {
-    inputVals.ch1 = CPPM.read_us(0);
-    inputVals.ch2 = CPPM.read_us(1);
-    inputVals.ch3 = CPPM.read_us(2);
-    inputVals.ch4 = CPPM.read_us(3);
+    /*
+    inputVals.ch1 = CPPM.read_us(0); // Receiver Roll
+    inputVals.ch2 = CPPM.read_us(1); // Receiver Pitch
+    inputVals.ch3 = CPPM.read_us(2); // Receiver Yaw
+    inputVals.ch4 = CPPM.read_us(3); // Intensity Knob
+    */
+
+    inputVals.ch1 = CPPM.read_us(ROLL); // Receiver Roll
+    inputVals.ch2 = CPPM.read_us(PITCH); // Receiver Pitch
+    inputVals.ch3 = CPPM.read_us(YAW); // Receiver Yaw
+    inputVals.ch4 = CPPM.read_us(KNOB); // Intensity Knob
+
+
   }
 }
 

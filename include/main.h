@@ -11,8 +11,14 @@
 
 #define MPU_ADDRESS 0x68
 
-enum {ROLL=0, PITCH=1, YAW=2, CHANNEL_MAX};
-enum {GVAL=0, GCAL=1, GACC=2, GYRO_MAX};
+// simple utility routine:
+inline double mapf(double val, double in_min, double in_max, double out_min, double out_max)
+{
+  return (val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+enum CHANNEL {ROLL = 0, PITCH = 1, YAW = 2, KNOB = 3, CHANNEL_MAX} ;
+enum GYRO {VAL = 0, CAL = 1, ACC = 2, GYRO_MAX} ;
 
 struct pidgainStruct
 {

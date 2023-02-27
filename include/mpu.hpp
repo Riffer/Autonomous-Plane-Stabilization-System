@@ -124,17 +124,17 @@ bool mpu_read_data(gyroStruct *acc, gyroStruct *gyro) // reads the current acc a
     while (Wire.available() < 14){}; // wait until buffer has 14 bytes
 
     // read 8 bit pairs while shifting first byte to left, building into a full 16 bit (long integer)
-    acc->x = Wire.read() << 8 | Wire.read(); //0x3B
-    acc->y = Wire.read() << 8 | Wire.read(); //0x3D
-    acc->z = Wire.read() << 8 | Wire.read(); //0x3F
+    acc->x = (int16_t)Wire.read() << 8 | Wire.read(); //0x3B
+    acc->y = (int16_t)Wire.read() << 8 | Wire.read(); //0x3D
+    acc->z = (int16_t)Wire.read() << 8 | Wire.read(); //0x3F
     acc->x *= -1; // invert value
 
     // temperature not used
-    temp = Wire.read() << 8 | Wire.read(); // 0x41
+    temp = (int16_t) Wire.read() << 8 | Wire.read(); // 0x41
 
-    gyro->x = Wire.read() << 8 | Wire.read(); // 0x43
-    gyro->y = Wire.read() << 8 | Wire.read(); // 0x45
-    gyro->z = Wire.read() << 8 | Wire.read(); // 0x47
+    gyro->x =(int16_t) Wire.read() << 8 | Wire.read(); // 0x43
+    gyro->y =(int16_t) Wire.read() << 8 | Wire.read(); // 0x45
+    gyro->z = (int16_t)Wire.read() << 8 | Wire.read(); // 0x47
     gyro->y *= -1; // invert value
 
     return true;
@@ -180,7 +180,7 @@ bool mpu_setup()
 
     if (0 == mpu_write_pair(0x6B, 0x80))         // reset
         if (0 == mpu_write_pair(0x6B, 0x00))     // disable sleep
-            if (0 == mpu_write_pair(0x6B, 0x01)) // auto clock source to be PLL gyrospcove
+            if (0 == mpu_write_pair(0x6B, 0x01)) // auto clock source to be PLL gyroscope
                 if (0 == mpu_write_pair(0x37, 0x22))
                     if (0 == mpu_write_pair(0x38, 0x01))                         // Enable data ready (bit 0) interrupt
                         if (0 == mpu_write_pair(0x1A, 0x03))                     // disable FSYNC, set gyro to 41-42 Hz
@@ -223,14 +223,15 @@ void mpu_test()
 #endif
 }
 
+#define CALIBRATION_LOOPS 500
 bool mpu_calibrate(gyroStruct *acc, gyroStruct *gyro, gyroStruct *cal)
 {
     serial_printlnF("calculating acc offset");
-    for (int cal_int = 0; cal_int < PWM_MAX; cal_int++)
+    for (int cal_int = 0; cal_int < CALIBRATION_LOOPS; cal_int++)
     {
         if (cal_int % 125 == 0)
         {
-            // serial_printF(".");
+            // blink LED while calibration
             digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
         }
 
@@ -252,9 +253,9 @@ bool mpu_calibrate(gyroStruct *acc, gyroStruct *gyro, gyroStruct *cal)
         serial_print(cal->z);
         serial_printlnF("");
 
-    cal->x /= PWM_MAX;
-    cal->y /= PWM_MAX;
-    cal->z /= PWM_MAX;
+    cal->x /= CALIBRATION_LOOPS;
+    cal->y /= CALIBRATION_LOOPS;
+    cal->z /= CALIBRATION_LOOPS;
 
     return true;
 }
