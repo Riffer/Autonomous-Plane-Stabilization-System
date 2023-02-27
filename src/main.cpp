@@ -2,14 +2,10 @@
 //========================================================Date: 27th January 2019=============================================================
 #include "main.h"
 #include "mpu.hpp"
-//#include <CPPM.h>
 #include <jm_CPPM.h>
 
-gyroStruct gyroVal;
-gyroStruct gyroCal;
-gyroStruct gyroAcc;
 
-
+gyroStruct gyro[GYRO_MAX];
 pidgainStruct gain[CHANNEL_MAX];
 
 angleValStruct angleVals;
@@ -93,27 +89,27 @@ void loop()
   }
 
 //#ifdef unused
-  if (!mpu_read_data(&gyroAcc, &gyroVal))
+  if (!mpu_read_data(&gyro[GACC], &gyro[GVAL]))
   {
     delay(1000);
     return;
   }
 //#endif
 
-  gyroVal.x -= gyroCal.x;
-  gyroVal.y -= gyroCal.y;
-  gyroVal.z -= gyroCal.z;
+  gyro[GVAL].x -= gyro[GCAL].x;
+  gyro[GVAL].y -= gyro[GCAL].y;
+  gyro[GVAL].z -= gyro[GCAL].z;
 
 
-  angleVals.Chan[PITCH] += gyroVal.x * 0.0000611;
-  angleVals.Chan[ROLL] += gyroVal.y * 0.0000611;
+  angleVals.Chan[PITCH] += gyro[GVAL].x * 0.0000611;
+  angleVals.Chan[ROLL] += gyro[GVAL].y * 0.0000611;
 
-  angleVals.Chan[PITCH] += angleVals.Chan[ROLL] * sin(gyroVal.z * 0.000001066);
-  angleVals.Chan[ROLL] -= angleVals.Chan[PITCH] * sin(gyroVal.z * 0.000001066);
+  angleVals.Chan[PITCH] += angleVals.Chan[ROLL] * sin(gyro[GVAL].z * 0.000001066);
+  angleVals.Chan[ROLL] -= angleVals.Chan[PITCH] * sin(gyro[GVAL].z * 0.000001066);
 
-  gyroAcc.totalVector = sqrt((gyroAcc.x * gyroAcc.x) + (gyroAcc.y * gyroAcc.y) + (gyroAcc.z * gyroAcc.z));
-  angleVals.Acc[PITCH] = asin((float)gyroAcc.y / gyroAcc.totalVector) * 57.296;
-  angleVals.Acc[ROLL] = asin((float)gyroAcc.x / gyroAcc.totalVector) * -57.296;
+  gyro[GACC].totalVector = sqrt((gyro[GACC].x * gyro[GACC].x) + (gyro[GACC].y * gyro[GACC].y) + (gyro[GACC].z * gyro[GACC].z));
+  angleVals.Acc[PITCH] = asin((float)gyro[GACC].y / gyro[GACC].totalVector) * 57.296;
+  angleVals.Acc[ROLL] = asin((float)gyro[GACC].x / gyro[GACC].totalVector) * -57.296;
 
   angleVals.Acc[PITCH] -= 0.0;
   angleVals.Acc[ROLL] -= 0.0;
@@ -141,9 +137,9 @@ void loop()
 
   
 
-  pid.input.chan[PITCH] = (pid.input.chan[PITCH] * oneMinusUptake) + (gyroVal.x * uptake);
-  pid.gyro.chan[ROLL] = (pid.gyro.chan[ROLL] * oneMinusUptake) + (gyroVal.y * uptake);
-  pid.input.chan[YAW] = (pid.input.chan[YAW] * oneMinusUptake) + (gyroVal.z * uptake);
+  pid.input.chan[PITCH] = (pid.input.chan[PITCH] * oneMinusUptake) + (gyro[GVAL].x * uptake);
+  pid.gyro.chan[ROLL] = (pid.gyro.chan[ROLL] * oneMinusUptake) + (gyro[GVAL].y * uptake);
+  pid.input.chan[YAW] = (pid.input.chan[YAW] * oneMinusUptake) + (gyro[GVAL].z * uptake);
 
   pid.setpoint.chan[ROLL] = 0;
   if (inputVals.ch1 > (PWM_MID + 8))
@@ -186,12 +182,12 @@ void loop()
   serial_println(angleVals.Chan[ROLL]);
 
 #ifdef unused
-  serial_printF("gyroVal.x: ");
-  serial_print(gyroVal.x);
-  serial_printF(" gyroVal.y: ");
-  serial_print(gyroVal.y);
-  serial_printF(" gyroVal.z: ");
-  serial_println(gyroVal.z);
+  serial_printF("gyro[GVAL].x: ");
+  serial_print(gyro[GVAL].x);
+  serial_printF(" gyro[GVAL].y: ");
+  serial_print(gyro[GVAL].y);
+  serial_printF(" gyro[GVAL].z: ");
+  serial_println(gyro[GVAL].z);
 #endif
 
 #ifdef unused
@@ -369,11 +365,11 @@ void setup_MPU()
 #ifdef unused
   serial_printlnF("calculated Offsets are");
   serial_printF("pitch offset: ");
-  serial_println(gyroCal.x);
+  serial_println(gyro[GCAL].x);
   serial_printF("roll offset: ");
-  serial_println(gyroCal.y);
+  serial_println(gyro[GCAL].y);
   serial_printF("yaw offset: ");
-  serial_println(gyroCal.z);
+  serial_println(gyro[GCAL].z);
 
   for (;;)
   {
