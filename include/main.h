@@ -73,23 +73,6 @@ struct PIDStruct
   float gyro;
 };
 
-/*
-struct RollPitchYawStruct
-{
-  float chan[CHANNEL_MAX];
-};
-
-struct PIDStruct
-{
-  RollPitchYawStruct i_mem;
-  RollPitchYawStruct input;
-  RollPitchYawStruct output;
-  RollPitchYawStruct setpoint;
-  RollPitchYawStruct d_error;
-  RollPitchYawStruct gyro;
-};
-*/
-
 #define DEBUG 1 //0 for turn off, 1 for turn on - this works function wise and the compiler optimizes if(0){} out
 
 
