@@ -40,12 +40,60 @@ void test()
     setting.accel_fchoice = 0x01;
     setting.accel_dlpf_cfg = ACCEL_DLPF_CFG::DLPF_45HZ;
 
-    if (!mpu.setup(MPU_ADDRESS, setting)) {  // change to your own address
-        while (1) {
-            Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
-            delay(5000);
-        }
+    if (!mpu.setup(MPU_ADDRESS, setting))
+    { 
+      while (1)
+      {
+        Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
+        delay(5000);
+      }
     }
+
+    // calibrate anytime you want to
+    Serial.println("Accel Gyro calibration will start in 5sec.");
+    Serial.println("Please leave the device still on the flat plane.");
+    mpu.verbose(true);
+    delay(5000);
+    mpu.calibrateAccelGyro();
+
+    
+
+    //Serial.println("Mag calibration will start in 5sec.");
+    //Serial.println("Please Wave device in a figure eight until done.");
+    //delay(5000);
+    //mpu.calibrateMag();
+
+    Serial.println("< calibration parameters >");
+    Serial.println("accel bias [g]: ");
+    Serial.print(mpu.getAccBiasX() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getAccBiasY() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getAccBiasZ() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+    Serial.println();
+    Serial.println("gyro bias [deg/s]: ");
+    Serial.print(mpu.getGyroBiasX() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getGyroBiasY() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getGyroBiasZ() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+    Serial.println();
+    Serial.println("mag bias [mG]: ");
+    Serial.print(mpu.getMagBiasX());
+    Serial.print(", ");
+    Serial.print(mpu.getMagBiasY());
+    Serial.print(", ");
+    Serial.print(mpu.getMagBiasZ());
+    Serial.println();
+    Serial.println("mag scale []: ");
+    Serial.print(mpu.getMagScaleX());
+    Serial.print(", ");
+    Serial.print(mpu.getMagScaleY());
+    Serial.print(", ");
+    Serial.print(mpu.getMagScaleZ());
+    Serial.println();
+
+    mpu.verbose(false);
 
     while (true)
     {
