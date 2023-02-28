@@ -45,18 +45,22 @@ void test()
             Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
             delay(5000);
         }
-    }  
-   
-   if (mpu.update()) {
-
-    Serial.print("Yaw, Pitch, Roll: ");
-    Serial.print(mpu.getYaw(), 2);
-    Serial.print(", ");
-    Serial.print(mpu.getPitch(), 2);
-    Serial.print(", ");
-    Serial.println(mpu.getRoll(), 2);
     }
 
+    while (true)
+    {
+        if (mpu.update())
+        {
+
+            Serial.print("Yaw, Pitch, Roll: ");
+            Serial.print(mpu.getYaw(), 2);
+            Serial.print(", ");
+            Serial.print(mpu.getPitch(), 2);
+            Serial.print(", ");
+            Serial.println(mpu.getRoll(), 2);
+        }
+        delay(300);
+    }
 }
 #endif
 
