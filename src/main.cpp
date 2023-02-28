@@ -4,7 +4,6 @@
 #include "mpu.hpp"
 #include <jm_CPPM.h>
 
-
 gyroStruct gyros[GYRO_MAX];
 pidgainStruct gains[CHANNEL_MAX];
 angleValStruct angles[CHANNEL_MAX];
@@ -20,11 +19,60 @@ void setup_SERVO();
 void cycle_CPPM();
 void setup_Wire();
 
+
+
+#define TEST true
+#ifdef TEST
+
+#include <MPU9250.h>
+
+MPU9250 mpu;
+
+void test()
+{
+    MPU9250Setting setting;
+    setting.accel_fs_sel = ACCEL_FS_SEL::A16G;
+    setting.gyro_fs_sel = GYRO_FS_SEL::G2000DPS;
+    setting.mag_output_bits = MAG_OUTPUT_BITS::M16BITS;
+    setting.fifo_sample_rate = FIFO_SAMPLE_RATE::SMPL_200HZ;
+    setting.gyro_fchoice = 0x03;
+    setting.gyro_dlpf_cfg = GYRO_DLPF_CFG::DLPF_41HZ;
+    setting.accel_fchoice = 0x01;
+    setting.accel_dlpf_cfg = ACCEL_DLPF_CFG::DLPF_45HZ;
+
+    if (!mpu.setup(MPU_ADDRESS, setting)) {  // change to your own address
+        while (1) {
+            Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
+            delay(5000);
+        }
+    }  
+   
+   if (mpu.update()) {
+
+    Serial.print("Yaw, Pitch, Roll: ");
+    Serial.print(mpu.getYaw(), 2);
+    Serial.print(", ");
+    Serial.print(mpu.getPitch(), 2);
+    Serial.print(", ");
+    Serial.println(mpu.getRoll(), 2);
+    }
+
+}
+#endif
+
+
 void setup()
 {
+
   pinMode(LED_BUILTIN, OUTPUT);
 
   Serial.begin(115200);
+
+#ifdef TEST
+  delay(2500);
+  void test();
+#endif 
+
 
   CPPM.begin(); // setup CPPM - will be called in loop
 
@@ -32,6 +80,8 @@ void setup()
 
   setup_MPU();  // setup I2C device
 
+
+    
   setup_SERVO(); // setup output pins
 
   delay(2500);
