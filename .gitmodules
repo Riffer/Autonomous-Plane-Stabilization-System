@@ -1,0 +1,6 @@
+[submodule "lib/lib"]
+	path = lib/lib
+	url = git@github.com:Riffer/MPU9250_WE.git
+[submodule "lib/MPU9250_WE"]
+	path = lib/MPU9250_WE
+	url = git@github.com:Riffer/MPU9250_WE.git
