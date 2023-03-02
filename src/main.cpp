@@ -40,7 +40,8 @@ void test()
     setting.accel_fchoice = 0x01;
     setting.accel_dlpf_cfg = ACCEL_DLPF_CFG::DLPF_45HZ;
 
-    if (!mpu.setup(MPU_ADDRESS, setting))
+    //if (!mpu.setup(MPU_ADDRESS, setting))
+    if (!mpu.setup(MPU_ADDRESS))
     { 
       while (1)
       {
@@ -60,8 +61,8 @@ void test()
 
     //Serial.println("Mag calibration will start in 5sec.");
     //Serial.println("Please Wave device in a figure eight until done.");
-    //delay(5000);
-    //mpu.calibrateMag();
+    delay(5000);
+    mpu.calibrateMag();
 
     Serial.println("< calibration parameters >");
     Serial.println("accel bias [g]: ");
@@ -94,18 +95,20 @@ void test()
     Serial.println();
 
     mpu.verbose(false);
+    mpu.ahrs(true);
+    //while(true);
 
     while (true)
     {
         if (mpu.update())
         {
 
-            Serial.print("Yaw, Pitch, Roll: ");
-            Serial.print(mpu.getYaw(), 2);
+            Serial.print("X, Y, Z: ");
+            Serial.print(mpu.getGyroX(), 2);
             Serial.print(", ");
-            Serial.print(mpu.getPitch(), 2);
+            Serial.print(mpu.getGyroY(), 2);
             Serial.print(", ");
-            Serial.println(mpu.getRoll(), 2);
+            Serial.println(mpu.getGyroZ(), 2);
         }
         delay(300);
     }
@@ -121,8 +124,10 @@ void setup()
   Serial.begin(115200);
 
 #ifdef TEST
+  setup_Wire(); // setup Wire for I2C incl. check of speed
+
   delay(2500);
-  void test();
+  test();
 #endif 
 
 
