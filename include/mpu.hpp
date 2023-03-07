@@ -6,14 +6,12 @@
 //#include <MPU9250_WE.h>
 #include "main.h"
 
-
 struct xyzFloat
 {
     float x;
     float y;
     float z;
 };
-
 
 
 #define I2C_ERROR_MSG "I2C error"

@@ -1,7 +1,7 @@
 //========================================================Author:SLOMOGANGSTA(VSYK)===========================================================
 //========================================================Date: 27th January 2019=============================================================
 #include "main.h"
-#include "mpu.hpp"
+//#include "mpu.hpp"
 #include <jm_CPPM.h>
 
 gyroStruct gyros[GYRO_MAX];
@@ -21,7 +21,73 @@ void setup_Wire();
 
 
 
-#define TEST true
+#define TEST2
+#ifdef TEST2
+//#include <math.h>
+#define PI 3.14159265358979323846
+#include <MPU9250_WE.h>
+//#include <MPU6050_WE.h>
+
+void test()
+{
+  MPU9250_WE MPU = MPU9250_WE(MPU_ADDRESS);
+  //MPU6050_WE MPU = MPU6050_WE(MPU_ADDRESS);
+  if(!MPU.init())
+  {
+    Serial.println("MPU9250 does not respond");
+    while (true)
+      ;
+  }
+  else
+  {
+    Serial.println("MPU9250 is connected");
+  }
+
+  Serial.println("Position you MPU9250 flat and don't move it - calibrating...");
+  delay(1000);
+  MPU.autoOffsets();
+  Serial.println("Done!");
+
+  MPU.setAccRange(MPU9250_ACC_RANGE_2G);
+  MPU.enableAccDLPF(true);
+  MPU.setAccDLPF(MPU9250_DLPF_6);
+
+  while(true)
+  {
+    xyzFloat gValue = MPU.getGValues();
+    xyzFloat angle = MPU.getAngles();
+
+    /* For g-values the corrected raws are used */
+    #ifdef unused
+    Serial.print("g-x      = ");
+    Serial.print(gValue.x);
+    Serial.print("  |  g-y      = ");
+    Serial.print(gValue.y);
+    Serial.print("  |  g-z      = ");
+    Serial.println(gValue.z);
+    #endif
+
+    /* Angles are also based on the corrected raws. Angles are simply calculated by
+       angle = arcsin(g Value) */
+    Serial.print("Angle x  = ");
+    Serial.print(angle.x);
+    Serial.print("  |  Angle y  = ");
+    Serial.print(angle.y);
+    Serial.print("  |  Angle z  = ");
+    Serial.println(angle.z);
+
+    //Serial.print("Orientation of the module: ");
+    //Serial.println(MPU.getOrientationAsString());
+
+    Serial.println();
+
+    delay(1000);
+  }
+}
+#endif 
+
+
+//#define TEST true
 #ifdef TEST
 
 #include <MPU9250.h>
@@ -128,8 +194,14 @@ void setup()
 
   delay(2500);
   test();
-#endif 
+#endif
 
+#ifdef TEST2
+  setup_Wire(); // setup Wire for I2C incl. check of speed
+
+  delay(2500);
+  test();
+#endif
 
   CPPM.begin(); // setup CPPM - will be called in loop
 
@@ -179,11 +251,13 @@ void loop()
     g.d = g.p = pinten;
   }
 
+#if unused
   if (!mpu_read_data(&gyros[ACC], &gyros[VAL]))
   {
     delay(1000);
     return;
   }
+#endif
 
   gyros[VAL].x -= gyros[CAL].x;
   gyros[VAL].y -= gyros[CAL].y;
@@ -416,6 +490,7 @@ void calculate_pid()
 
 void setup_MPU()
 {
+  #ifdef unused
   if(!mpu_setup())
   {
     //while (1)
@@ -428,6 +503,7 @@ void setup_MPU()
       }
     }
   }
+  #endif 
 
 #ifdef unused
   serial_printlnF("calculated Offsets are");

@@ -20,6 +20,7 @@ inline double mapf(double val, double in_min, double in_max, double out_min, dou
 enum CHANNEL {ROLL = 0, PITCH = 1, YAW = 2, KNOB = 3, CHANNEL_MAX} ;
 enum GYRO {VAL = 0, CAL = 1, ACC = 2, GYRO_MAX} ;
 
+
 struct pidgainStruct
 {
   float p = 0;
