@@ -258,4 +258,48 @@ bool mpu_calibrate(gyroStruct *acc, gyroStruct *gyro, gyroStruct *cal)
     return true;
 }
 
+/**
+ * ChatGPT:
+ * 
+ * Wenn wir von einem Flugzeug ausgehen, haben die X-, Y- und Z-Achsen des Beschleunigungsmessers unterschiedliche Ausrichtungen:
+ *  Die X-Achse zeigt in Richtung der Längsachse des Flugzeugs, also entlang der Flugrichtung von vorne nach hinten.
+ *  Die Y-Achse zeigt in Richtung der Querachse des Flugzeugs, also von links nach rechts.
+ *  Die Z-Achse zeigt in Richtung der Hochachse des Flugzeugs, also von unten nach oben.
+ * Diese Ausrichtung ist abhängig von der Montageposition des Beschleunigungsmessers im Flugzeug. In der Regel wird der Beschleunigungsmesser so montiert, dass die X-Achse parallel zur Flugzeuglängsachse ausgerichtet ist, die Y-Achse parallel zur Flugzeugquerachse und die Z-Achse parallel zur Flugzeughochachse.
+
+ * In der MPU6050-Bibliothek werden die Rohdaten für jede Achse als 16-Bit-Zahl ausgegeben, wobei eine positive Zahl eine Beschleunigung in positiver Richtung anzeigt und eine negative Zahl eine Beschleunigung in negativer Richtung anzeigt. 
+ * Die Einheit für die Rohdaten ist in der Regel die Einheit der Gravitationsbeschleunigung (g).
+ * 
+ * 
+ * Die Funktion getPitch() ruft getRawAccelX(), getRawAccelY() und getRawAccelZ() auf, um die Rohdaten für die X-, Y- und Z-Achsen des Beschleunigungsmessers aus dem MPU6050-Sensor auszulesen. 
+ * Anschließend wird der Pitchwinkel mithilfe der atan2()-Funktion und der Rohdaten für die X-, Y- und Z-Achsen des Beschleunigungsmessers berechnet.
+ * Die atan2()-Funktion wird verwendet, um den Arcustangens des Verhältnisses zwischen -rawAccelX und sqrt(rawAccelY * rawAccelY + rawAccelZ * rawAccelZ) zu berechnen. 
+ * Dies ergibt den Pitchwinkel in Radiant, der anschließend mithilfe der RAD_TO_DEG-Konstante in Grad umgewandelt wird.
+*/
+
+float getPitch(gyroStruct *acc) {
+  int16_t rawAccelX = acc->x; //getRawAccelX();
+  int16_t rawAccelY = acc->y; //getRawAccelY();
+  int16_t rawAccelZ = acc->z; //getRawAccelZ();
+
+  // Calculate pitch angle using accelerometer data
+  float pitch = atan2(-rawAccelX, sqrt(rawAccelY * rawAccelY + rawAccelZ * rawAccelZ)) * RAD_TO_DEG;
+
+  return pitch;
+}
+
+/**
+ * Die Funktion liest die Rohdaten für die Y- und Z-Achsen des Beschleunigungsmessers aus dem MPU6050-Sensor aus und berechnet den Rollwinkel basierend auf diesen Werten. 
+ * Der Wert für die X-Achse (rawAccelX) wird nicht benötigt und kann daher entfernt werden.
+*/
+float getRoll(gyroStruct *acc) {
+  int16_t rawAccelY = acc->y; //getRawAccelY();
+  int16_t rawAccelZ = acc->z; //getRawAccelZ();
+
+  // Calculate roll angle using accelerometer data
+  float roll = atan2(rawAccelY, rawAccelZ) * RAD_TO_DEG;
+
+  return roll;
+}
+
 #endif // MPU_H
