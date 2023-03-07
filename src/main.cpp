@@ -1,7 +1,7 @@
 //========================================================Author:SLOMOGANGSTA(VSYK)===========================================================
 //========================================================Date: 27th January 2019=============================================================
 #include "main.h"
-//#include "mpu.hpp"
+#include "mpu.hpp"
 #include <jm_CPPM.h>
 
 gyroStruct gyros[GYRO_MAX];
@@ -19,169 +19,6 @@ void setup_SERVO();
 void cycle_CPPM();
 void setup_Wire();
 
-
-
-#define TEST2
-#ifdef TEST2
-//#include <math.h>
-#define PI 3.14159265358979323846
-#include <MPU9250_WE.h>
-//#include <MPU6050_WE.h>
-
-void test()
-{
-  MPU9250_WE MPU = MPU9250_WE(MPU_ADDRESS);
-  //MPU6050_WE MPU = MPU6050_WE(MPU_ADDRESS);
-  if(!MPU.init())
-  {
-    Serial.println("MPU9250 does not respond");
-    while (true)
-      ;
-  }
-  else
-  {
-    Serial.println("MPU9250 is connected");
-  }
-
-  Serial.println("Position you MPU9250 flat and don't move it - calibrating...");
-  delay(1000);
-  MPU.autoOffsets();
-  Serial.println("Done!");
-
-  MPU.setAccRange(MPU9250_ACC_RANGE_2G);
-  MPU.enableAccDLPF(true);
-  MPU.setAccDLPF(MPU9250_DLPF_6);
-
-  while(true)
-  {
-    xyzFloat gValue = MPU.getGValues();
-    xyzFloat angle = MPU.getAngles();
-
-    /* For g-values the corrected raws are used */
-    #ifdef unused
-    Serial.print("g-x      = ");
-    Serial.print(gValue.x);
-    Serial.print("  |  g-y      = ");
-    Serial.print(gValue.y);
-    Serial.print("  |  g-z      = ");
-    Serial.println(gValue.z);
-    #endif
-
-    /* Angles are also based on the corrected raws. Angles are simply calculated by
-       angle = arcsin(g Value) */
-    Serial.print("Angle x  = ");
-    Serial.print(angle.x);
-    Serial.print("  |  Angle y  = ");
-    Serial.print(angle.y);
-    Serial.print("  |  Angle z  = ");
-    Serial.println(angle.z);
-
-    //Serial.print("Orientation of the module: ");
-    //Serial.println(MPU.getOrientationAsString());
-
-    Serial.println();
-
-    delay(1000);
-  }
-}
-#endif 
-
-
-//#define TEST true
-#ifdef TEST
-
-#include <MPU9250.h>
-
-MPU9250 mpu;
-
-void test()
-{
-    MPU9250Setting setting;
-    setting.accel_fs_sel = ACCEL_FS_SEL::A16G;
-    setting.gyro_fs_sel = GYRO_FS_SEL::G2000DPS;
-    setting.mag_output_bits = MAG_OUTPUT_BITS::M16BITS;
-    setting.fifo_sample_rate = FIFO_SAMPLE_RATE::SMPL_200HZ;
-    setting.gyro_fchoice = 0x03;
-    setting.gyro_dlpf_cfg = GYRO_DLPF_CFG::DLPF_41HZ;
-    setting.accel_fchoice = 0x01;
-    setting.accel_dlpf_cfg = ACCEL_DLPF_CFG::DLPF_45HZ;
-
-    //if (!mpu.setup(MPU_ADDRESS, setting))
-    if (!mpu.setup(MPU_ADDRESS))
-    { 
-      while (1)
-      {
-        Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
-        delay(5000);
-      }
-    }
-
-    // calibrate anytime you want to
-    Serial.println("Accel Gyro calibration will start in 5sec.");
-    Serial.println("Please leave the device still on the flat plane.");
-    mpu.verbose(true);
-    delay(5000);
-    mpu.calibrateAccelGyro();
-
-    
-
-    //Serial.println("Mag calibration will start in 5sec.");
-    //Serial.println("Please Wave device in a figure eight until done.");
-    delay(5000);
-    mpu.calibrateMag();
-
-    Serial.println("< calibration parameters >");
-    Serial.println("accel bias [g]: ");
-    Serial.print(mpu.getAccBiasX() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
-    Serial.print(", ");
-    Serial.print(mpu.getAccBiasY() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
-    Serial.print(", ");
-    Serial.print(mpu.getAccBiasZ() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
-    Serial.println();
-    Serial.println("gyro bias [deg/s]: ");
-    Serial.print(mpu.getGyroBiasX() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
-    Serial.print(", ");
-    Serial.print(mpu.getGyroBiasY() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
-    Serial.print(", ");
-    Serial.print(mpu.getGyroBiasZ() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
-    Serial.println();
-    Serial.println("mag bias [mG]: ");
-    Serial.print(mpu.getMagBiasX());
-    Serial.print(", ");
-    Serial.print(mpu.getMagBiasY());
-    Serial.print(", ");
-    Serial.print(mpu.getMagBiasZ());
-    Serial.println();
-    Serial.println("mag scale []: ");
-    Serial.print(mpu.getMagScaleX());
-    Serial.print(", ");
-    Serial.print(mpu.getMagScaleY());
-    Serial.print(", ");
-    Serial.print(mpu.getMagScaleZ());
-    Serial.println();
-
-    mpu.verbose(false);
-    mpu.ahrs(true);
-    //while(true);
-
-    while (true)
-    {
-        if (mpu.update())
-        {
-
-            Serial.print("X, Y, Z: ");
-            Serial.print(mpu.getGyroX(), 2);
-            Serial.print(", ");
-            Serial.print(mpu.getGyroY(), 2);
-            Serial.print(", ");
-            Serial.println(mpu.getGyroZ(), 2);
-        }
-        delay(300);
-    }
-}
-#endif
-
-
 void setup()
 {
 
@@ -189,19 +26,9 @@ void setup()
 
   Serial.begin(115200);
 
-#ifdef TEST
   setup_Wire(); // setup Wire for I2C incl. check of speed
 
   delay(2500);
-  test();
-#endif
-
-#ifdef TEST2
-  setup_Wire(); // setup Wire for I2C incl. check of speed
-
-  delay(2500);
-  test();
-#endif
 
   CPPM.begin(); // setup CPPM - will be called in loop
 
@@ -251,13 +78,11 @@ void loop()
     g.d = g.p = pinten;
   }
 
-#if unused
   if (!mpu_read_data(&gyros[ACC], &gyros[VAL]))
   {
     delay(1000);
     return;
   }
-#endif
 
   gyros[VAL].x -= gyros[CAL].x;
   gyros[VAL].y -= gyros[CAL].y;
@@ -273,8 +98,8 @@ void loop()
   angles[ROLL].chan -= angles[PITCH].chan * sin(gyros[VAL].z * 0.000001066);
 
   gyros[ACC].totalVector = sqrt((gyros[ACC].x * gyros[ACC].x) + (gyros[ACC].y * gyros[ACC].y) + (gyros[ACC].z * gyros[ACC].z));
-  angles[PITCH].acc = asin((float)gyros[ACC].y / gyros[ACC].totalVector) * 57.296;
-  angles[ROLL].acc = asin((float)gyros[ACC].x / gyros[ACC].totalVector) * -57.296;
+  angles[PITCH].acc = asin((float)gyros[ACC].y / gyros[ACC].totalVector) * RAD_TO_DEG;
+  angles[ROLL].acc = asin((float)gyros[ACC].x / gyros[ACC].totalVector) * -RAD_TO_DEG;
 
   angles[PITCH].acc -= 0.0;
   angles[ROLL].acc -= 0.0;
@@ -490,7 +315,6 @@ void calculate_pid()
 
 void setup_MPU()
 {
-  #ifdef unused
   if(!mpu_setup())
   {
     //while (1)
@@ -503,7 +327,6 @@ void setup_MPU()
       }
     }
   }
-  #endif 
 
 #ifdef unused
   serial_printlnF("calculated Offsets are");
