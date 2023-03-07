@@ -84,6 +84,7 @@ void loop()
     return;
   }
 
+  // apply correction values
   gyros[VAL].x -= gyros[CAL].x;
   gyros[VAL].y -= gyros[CAL].y;
   gyros[VAL].z -= gyros[CAL].z;
@@ -101,6 +102,7 @@ void loop()
   angles[PITCH].acc = asin((float)gyros[ACC].y / gyros[ACC].totalVector) * RAD_TO_DEG;
   angles[ROLL].acc = asin((float)gyros[ACC].x / gyros[ACC].totalVector) * -RAD_TO_DEG;
 
+  // useless...
   angles[PITCH].acc -= 0.0;
   angles[ROLL].acc -= 0.0;
 
